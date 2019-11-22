@@ -57,7 +57,12 @@ get_pgpass <- function(database, host, user, savePassword = FALSE){
   {
     dir.create(file.path(directory, "postgresql"))
   } else {
+    if(!exists){ 
+      passwordTable <- data.frame("host:port:database:user:pwd\n")
+      write.table(passwordTable, fileName, row.names = F, col.names = F, quote = F)
+    } 
     passwordTable <- read.table(fileName, sep = ":", stringsAsFactors=FALSE)
+    
     #return(passwordTable)
   }
   if(exists('passwordTable'))

@@ -7,7 +7,7 @@ pwd <- get_pgpass(database = "postgis_car", host = "130.56.248.13", user = "post
 drv <- dbDriver("PostgreSQL")
 ch <- dbConnect(drv, dbname = "postgis_car",
                 host = "130.56.248.13", port = 5432,
-                user = "ivan_hanigan", password = pwd[,5])
+                user = "postgis_user", password = pwd[,5])
 rm(pwd) # removes the password
 
 dbGetQuery(ch, "select * from public.dbsize ")
