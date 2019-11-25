@@ -2,6 +2,7 @@
 yy <- 2007
 omi <- paste("sat_omi_no2.omi_no2_",yy,"kr1_new", sep = "")
 
+## TODO should this compute the average of pixels within polygons (and if so should it be weighted by area of overlap?)
 dbSendQuery(ch,
 ## cat(
 paste("

@@ -1,16 +1,74 @@
 majrds <- "roads_psma.majrds_bankstown_mb_test01"
 
+## NB reproject in metres albers equal area
 dbSendQuery(ch,
-"select clipped.gid, clipped_geom
-into file314c66f3cbb3_majrds500m
+## cat(
+paste("
+select clipped.gid, SUBTYPE_CD, clipped_geom as geom
+into ",unique_name,"_majrds500m
 from (
-  select trails.gid, 
+  select trails.gid as gid_roads, SUBTYPE_CD, country.gid as gid, 
   (ST_Dump(ST_Intersection(country.geom, trails.geom))).geom clipped_geom
-  from file314c66f3cbb3_buffer500 as country
+  from ",unique_name,"_buffer500 as country
   inner join 
-  roads_psma.majrds_bankstown_mb_test01 as trails 
+  (select gid, subtype_cd, st_transform(geom, ",srid,") as geom from ",majrds,") as trails 
   on ST_Intersects(country.geom, trails.geom)
 ) as clipped
 where ST_Dimension(clipped.clipped_geom) = 1;
-")
+", sep = "")
+)
 ## from https://postgis.net/docs/ST_Intersection.html
+
+## not needed because already in albers
+# if(recreate){
+# dbSendQuery(ch, 
+# ## cat(
+# paste("drop table ",unique_name,"_majrds500mAlbers", sep = "")            
+# )
+# }
+# 
+# dbSendQuery(ch, 
+# ## cat(
+# paste("
+# select gid, SUBTYPE_CD, st_transform(clipped_geom, 3577) as geom
+# into ",unique_name,"_majrds500mAlbers
+# from ",unique_name,"_majrds500m", sep = "")            
+#             )
+
+## to test one
+dbSendQuery(ch,
+## cat(
+paste("
+select t1.gid, SUBTYPE_CD, st_length(t1.geom) as len, t1.geom
+into ",unique_name,"_majrds500mAlbersGID1
+from ",unique_name,"_majrds500m t1
+where gid = 1
+", sep = "")
+           )
+
+
+dbSendQuery(ch,
+## cat(
+paste("
+select t1.gid, SUBTYPE_CD, st_length(t1.geom) as len, t1.geom
+into ",unique_name,"_majrds500mAlbers_length
+from ",unique_name,"_majrds500m t1
+", sep = "")
+)
+
+## do 
+## slect ("SUBTYPE_CD" =2 OR "SUBTYPE_CD" =3) these are multilane roads
+
+dbSendQuery(ch,
+## cat(
+paste("
+select t1.gid, 
+SUBTYPE_CD,
+case when subtype_cd in (2,3) then sum(len)/2 else sum(len) end as RDS_500M 
+into ",unique_name,"_majrds500mAlbers_total_road_length
+from ",unique_name,"_majrds500mAlbers_length t1
+group by gid, subtype_cd
+order by gid
+", sep = "")
+)
+
