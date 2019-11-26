@@ -6,12 +6,12 @@ source("code/function_get_pgpass.R")
 source("code/function_pgListTables.R")
 
 #### 01 Connect to postGIS database ####
-## TODO storePassword?
+## TODO 1) should we ask pgpass function to storePassword? 2) need to explain that some data is restricted and postgis_user can only do demo with public data, for full satellite implementation need to get permission and logon as specified username 
+username <- "postgis_user"
 source("code/01_test_connection_to_PostGIS.R")
 
 ## create a random label to identify the working files for this run
 unique_name <- basename(tempfile())
-## unique_name <- "file314c66f3cbb3"
 
 ## run the scripts in order
 
@@ -29,9 +29,10 @@ srid <- 3577
 source("code/02_buffers.R")                          
 
 #### 03 extract OMI satellite data ####
+## THIS IS RESTRCTED DATA
 ## declare inputs
 yy <- 2007
-omi <- paste("sat_omi_no2.omi_no2_",yy,"kr1_new", sep = "")
+omi <- paste("sat_omi_no2.omi_no2_",yy,"kr1_old", sep = "")
 ## TODO should this compute the average of pixels within polygons (and if so should it be weighted by area of overlap?)
 source("code/03_extract_OMI.R")
 
@@ -41,6 +42,7 @@ impsa <- "impervious_surfaces.impsa_mb_test01"
 source("code/04_overlay_IMPSA_with_1200M.R")         
 
 #### 05 major roads ####
+## this is restricted data
 majrds <- "roads_psma.majrds_bankstown_mb_test01"
 ## NB we reproject this into metres albers equal area
 
@@ -63,7 +65,7 @@ source("code/07_industrial_or_open_in_buffer.R")
 predicted <- dbGetQuery(ch,
 ##cat(
 paste("
-select gid, 4.563 + ((0.701 * ((grid_code-10)/10))) + (1.203 * RASTERVALU ) + (0.828 *(RDS_500M - 0.65)) + (-0.17 * ((OPENSPACE_10000M-10)/10)) + (2.629 * NPI_DENS_400) + (4.083 * NPI_DENS_1000) + (0.451 * ((INDUSTRIAL_10000M - 10)/10)) + (-0.14 * (year-2008)) as predicted
+select gid, 4.563 + ((0.701 * ((grid_code-10)/10))) + (1.203 * RASTERVALU ) + (0.828 *(RDS_500M - 0.65)) + (-0.17 * ((OPENSPACE_10000M-10)/10)) + (2.629 * NPI_DENS_400) + (4.083 * NPI_DENS_1000) + (0.451 * ((INDUSTRIAL_10000M - 10)/10)) + (-0.14 * (year-2008)) as predicted, main_merge.*
 from (
 select t1.gid, t1.grid_code, t2.RASTERVALU, t3.RDS_500M, t4.area_ind as INDUSTRIAL_10000M, t4.area_open as OPENSPACE_10000M, t5.npi_dens_400, t6.npi_dens_1000, ",yy," as year
 from ",unique_name,"_impsa1200m t1
@@ -85,10 +87,8 @@ on t1.gid = t6.gid
 ) main_merge
 ", sep = "")
 )
-predicted
-
-## from Luke 
-## ("4.563 + ((0.701 * (([grid_code]-10)/10))) + (1.203 * [RASTERVALU] ) + (0.828 *([Sum_RDS_50]-0.65)) + (-0.17 *(([OPENSPACE_10000M]-10)/10)) + (2.629 * [NPI_DENS_4]) + (4.083 * [NPI_DENS_1]) + (0.451 *(([INDUSTRIAL_10000M]-10)/10)) + (-0.14 * ([YEAR_2007]-2008))")
+predicted[,1:4]
+## TODO: this is wrong.  The range in ppb should be 0 to 30 not 890!
 
 ## clean up the database for the working tables while developing this run?
 tbls <- pgListTables(ch, "public")
