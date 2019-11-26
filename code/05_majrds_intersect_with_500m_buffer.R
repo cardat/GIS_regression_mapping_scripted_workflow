@@ -1,9 +1,8 @@
-majrds <- "roads_psma.majrds_bankstown_mb_test01"
+## 05 major roads
 
-## NB reproject in metres albers equal area
 dbSendQuery(ch,
 ## cat(
-paste("
+paste("drop table if exists ",unique_name,"_majrds500m;
 select clipped.gid, SUBTYPE_CD, clipped_geom as geom
 into ",unique_name,"_majrds500m
 from (
@@ -19,37 +18,21 @@ where ST_Dimension(clipped.clipped_geom) = 1;
 )
 ## from https://postgis.net/docs/ST_Intersection.html
 
-## not needed because already in albers
-# if(recreate){
-# dbSendQuery(ch, 
-# ## cat(
-# paste("drop table ",unique_name,"_majrds500mAlbers", sep = "")            
-# )
-# }
-# 
-# dbSendQuery(ch, 
+## to test one
+# dbSendQuery(ch,
 # ## cat(
 # paste("
-# select gid, SUBTYPE_CD, st_transform(clipped_geom, 3577) as geom
-# into ",unique_name,"_majrds500mAlbers
-# from ",unique_name,"_majrds500m", sep = "")            
-#             )
-
-## to test one
-dbSendQuery(ch,
-## cat(
-paste("
-select t1.gid, SUBTYPE_CD, st_length(t1.geom) as len, t1.geom
-into ",unique_name,"_majrds500mAlbersGID1
-from ",unique_name,"_majrds500m t1
-where gid = 1
-", sep = "")
-           )
+# select t1.gid, SUBTYPE_CD, st_length(t1.geom) as len, t1.geom
+# into ",unique_name,"_majrds500mAlbersGID1
+# from ",unique_name,"_majrds500m t1
+# where gid = 1
+# ", sep = "")
+#            )
 
 
 dbSendQuery(ch,
 ## cat(
-paste("
+paste("drop table if exists ",unique_name,"_majrds500mAlbers_length;
 select t1.gid, SUBTYPE_CD, st_length(t1.geom) as len, t1.geom
 into ",unique_name,"_majrds500mAlbers_length
 from ",unique_name,"_majrds500m t1
@@ -61,7 +44,7 @@ from ",unique_name,"_majrds500m t1
 
 dbSendQuery(ch,
 ## cat(
-paste("
+paste("drop table if exists ",unique_name,"_majrds500mAlbers_total_road_length;
 select t1.gid, 
 SUBTYPE_CD,
 case when subtype_cd in (2,3) then sum(len)/2 else sum(len) end as RDS_500M 

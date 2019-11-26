@@ -1,9 +1,7 @@
-impsa <- "impervious_surfaces.impsa_mb_test01"
-
+## 04 impervious
 dbSendQuery(ch,
 ## cat(
-## drop table ",unique_name,"_impsa1200m;
-paste("
+paste("drop table if exists ",unique_name,"_impsa1200m;
 select t1.gid, avg(t2.grid_code) as grid_code
 into ",unique_name,"_impsa1200m
 from ",unique_name,"_buffer1200 t1, ",impsa," t2
