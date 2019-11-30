@@ -9,7 +9,7 @@ from ",omi," where rid = 1
 )
 
 srid_rcpt <-dbGetQuery(ch,
-##cat(
+## cat(
 paste("select find_srid('",strsplit(recpt, "\\.")[[1]][1],"', '",strsplit(recpt, "\\.")[[1]][2],"', 'geom')
 ", sep = "")
 )

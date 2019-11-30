@@ -25,7 +25,7 @@ where st_intersects(t1.geom, t2.geom)", sep = "")
 
 dbSendQuery(ch,
 ## cat(
-paste("
+paste("drop table if exists ",unique_name,"_buffer",radii_todo,"_insct_coast;
 select t1.gid, st_intersection(t1.geom, t2.geom) as geom
 into ",unique_name,"_buffer",radii_todo,"_insct_coast
 from ",unique_name,"_buffer",radii_todo," t1,
