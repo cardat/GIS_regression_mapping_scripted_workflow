@@ -19,21 +19,21 @@ unique_name <- basename(tempfile())
 #### 02 create buffers ####
 ## declare inputs
 ## test on a subset: sa2_test01
-dbSendQuery(ch,
-"drop table public.sa2_test01_bldngs;
-select t2.gid, id, xcoord, ycoord, st_transform(t2.geom, 4283) as geom
-into public.sa2_test01_bldngs
-from abs_sa2.sa2_2016_aus t1,
-subset_scaffolding_sydney_100m t2
-where st_contains(st_transform(t1.geom, 28356), t2.geom) 
-and sa2_main16 = '119011361'
-"
-)
+# dbSendQuery(ch,
+# "drop table public.sa2_test01_bldngs;
+# select t2.gid, id, xcoord, ycoord, st_transform(t2.geom, 4283) as geom
+# into public.sa2_test01_bldngs
+# from abs_sa2.sa2_2016_aus t1,
+# subset_scaffolding_sydney_100m t2
+# where st_contains(st_transform(t1.geom, 28356), t2.geom) 
+# and sa2_main16 = '119011361'
+# "
+# )
 ## recpt <- "public.sa2_test01_bldngs" ## "public.mb_test01_bldngs"
 ## instead now try all the points in the subset_square
 strt <- Sys.time()
 ## Make sure you include SCHEMA.and.TABLE
-recpt <- "public.subset_scaffolding_sydney_100m"
+recpt <- "public.subset_scaffolding_sydney_100m_437"
 ## if the SRID is differnt need to st_transform to the GDA94 projection
 namlist <- dbGetQuery(ch, paste("select * from ",recpt," limit 1"))
 namlist2 <- paste(names(namlist), sep = "", collapse = ", ")
@@ -63,19 +63,21 @@ source("code/02_buffers.R")
 #### 03 extract OMI satellite data ####
 ## THIS IS RESTRCTED DATA
 ## declare inputs
-yy <- 2007
-omi <- paste("sat_omi_no2.omi_no2_",yy,"kr1_old", sep = "")
+## note that old is original, new was provided during the 45andUp experiment
+yy <- 2016
+omi <- paste("sat_omi_no2.omi_no2_",yy,"kr1_new", sep = "")
 ## TODO should this compute the average of pixels within polygons (and if so should it be weighted by area of overlap?)
 source("code/03_extract_OMI.R")
 
 #### 04 impervious_surfaces ####
-impsa <- "impervious_surfaces.impsa_mb_test01"
+impsa <- "impervious_surfaces.impsa_437_10K"
+## first test  "impervious_surfaces.impsa_mb_test_01"
 ## TODO we should generalise this so it is not necessarily the 1200 buffer
 source("code/04_overlay_IMPSA_with_1200M.R")         
 
 #### 05 major roads ####
 ## this is restricted data
-majrds <- "roads_psma.majrds_bankstown_mb_test01"
+majrds <- "roads_psma.majrds_437_10k"
 ## NB we reproject this into metres albers equal area
 
 source("code/05_majrds_intersect_with_500m_buffer.R")
@@ -96,6 +98,7 @@ ed <- Sys.time()
 ed - strt
 
 #### 08 Merge master table ####
+# Note that some of these are centred and standardised 
 predicted <- dbGetQuery(ch,
 ##cat(
 paste("
@@ -123,9 +126,11 @@ on t1.gid = t7.gid
 ) main_merge
 ", sep = "")
 )
+summary(predicted)
+predicted[1:10,]
 predicted[1:10,1:4]
 t(predicted[1,])
-
+##write.csv(predicted, "working_temporary/gis_no2_2007_437_qc_predicted.csv", row.names = F)
 pred <- predicted[,c("x", "y", "predicted")]
 
 gridded(pred) <- ~x+y
@@ -135,8 +140,9 @@ dir()
 ## dir.create("working_temporary")
 pred <- raster(pred)
 #writeRaster(pred, "working_temporary/gis_no2_2007_sa2_test01.tif", format = "GTiff")
-writeRaster(pred, "working_temporary/gis_no2_2007_438.tif", format = "GTiff", overwrite=T)
-
+#writeRaster(pred, "working_temporary/gis_no2_2007_438.tif", format = "GTiff", overwrite=T)
+#writeRaster(pred, "working_temporary/gis_no2_2007_437.tif", format = "GTiff", overwrite=T)
+writeRaster(pred, "working_temporary/gis_no2_2016_437.tif", format = "GTiff", overwrite=T)
 
 ## clean up the database for the working tables while developing this run?
 tbls <- pgListTables(ch, "public")
