@@ -28,6 +28,8 @@ output:
   html_document: null
   word_document: null
 fontsize: 11pt
+header-includes:
+  - \usepackage{graphicx}
 capsize: normalsize
 csl: tex_components/meemodified.csl
 documentclass: article
@@ -106,10 +108,47 @@ In the first case we should describe the data used for the Knibbs 2014 NO2 demo.
 
 Second, we should describe how an extension case study would gather new data and insert into the database.
 
+## Results
+
+The resulting prediction datasets can be exported to a variety of GIS formats including ESRI Shapefiles and GeoTIFF raster files Figure \ref{fig:gisno2100m}. 
+
+
+\begin{figure}[!h]
+\centering
+\includegraphics[width=.9\textwidth]{figures_and_tables/gis_no2_100m.png}
+\caption{Western Sydney Liverpool case study 2016 NO2 predicted at a grid of evenly spaced points 100m by 100m and stored as a GeoTIFF file}
+\label{fig:gisno2100m}
+\end{figure}
+
+
+In addition the codes are included to generate an interactive web mapping version as shown in Figure \ref{fig:gisno2leafletmapno2} and Figure \ref{fig:gisno2leafletmappop}.
+
+\begin{figure}[!h]
+\centering
+\includegraphics[width=.8\textwidth]{figures_and_tables/gis_no2_leaflet_map_no2.png}
+\caption{Western Sydney Liverpool case study NO2 in 2016 (ppb) averages for ABS Meshblocks from the 2016 Census}
+\label{fig:gisno2leafletmapno2}
+\end{figure}
+
+\begin{figure}[!h]
+\centering
+\includegraphics[width=.8\textwidth]{figures_and_tables/gis_no2_leaflet_map_pop.png}
+\caption{Western Sydney Liverpool case study 2016 populations for ABS Meshblocks}
+\label{fig:gisno2leafletmappop}
+\end{figure}
+
+\clearpage
+
+## Discussion and Conclusions
+
+TODO
+
 # Acknowledgments
 This project was funded by the Clean Air and Urban Landscapes (CAUL) hub of the Australian Government’s National and Environmental Science Programme (NESP).
 Financial support was also provided by the Centre for Air pollution, energy and health Research (CAR, http://www.car-cre.org.au) an Australian National Health and Medical Research Council (NHMRC) Centre of Research Excellence; and the Air Pollution, Traffic Exposures and Mortality and Morbidity in Older Australians (APTEMA) Study.
 
 This research is undertaken with the assistance of resources from the Collaborative Environment for Scholarly Analysis and Synthesis (CoESRA; https :// coesr a.tern.org.au).
+
+\clearpage
 
 # References
