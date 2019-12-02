@@ -83,20 +83,20 @@ Workflow orchestration and statistical analysis was implemented in R:
 - R language for statistical computing [www.r-project.org](www.r-project.org)
 - and various R packages installed from the CRAN public repository
 
-The `main.R` script in the project directory is set up so that the user can declare specific inputs required for the specific update, and then run the component steps in sequence. These are:
+The "main.R" script in the project directory is set up so that the user can declare specific inputs required for the specific update, and then run the component steps in sequence. These are:
 
-1. `01_test_connection_to_PostGIS.R`       
-2. `02_buffers.R`                          
-3. `03_extract_OMI.R`                      
-4. `04_overlay_IMPSA_with_1200M.R`         
-5. `05_majrds_intersect_with_500m_buffer.R`
-6. `06_NPINOX_extract.R`                   
-7. `07_industrial_or_open_in_buffer.R`     
+1. "01_test_connection_to_PostGIS.R"
+2. "02_buffers.R"
+3. "03_extract_OMI.R"
+4. "04_overlay_IMPSA_with_1200M.R"
+5. "05_majrds_intersect_with_500m_buffer.R"
+6. "06_NPINOX_extract.R"
+7. "07_industrial_or_open_in_buffer.R"     
 
 We also include some helper functions written to enable user authentication on the database and database management:
 
-1. `function_get_pgpass.R`                 
-2. `function_pgListTables.R` 
+1. "function_get_pgpass.R"
+2. "function_pgListTables.R" 
 
 ## Data inputs
 
