@@ -5,42 +5,83 @@
 source("code/function_get_pgpass.R")
 source("code/function_pgListTables.R")
 library(raster)
+library(rgdal)
 
 #### 01 Connect to postGIS database ####
 ## TODO 1) should we ask pgpass function to storePassword? 2) need to explain that some data is restricted and postgis_user can only do demo with public data, for full satellite implementation need to get permission and logon as specified username 
-username <- "ivan_hanigan" #"postgis_user"
+username <- "postgis_user"
 source("code/01_test_connection_to_PostGIS.R")
 
 ## create a random label to identify the working files for this run
 unique_name <- basename(tempfile())
 
-## run the scripts in order
+## now load the spatial data of the estimation nodes
 
-#### 02 create buffers ####
-## declare inputs
-## test on a subset: sa2_test01
-# dbSendQuery(ch,
-# "drop table public.sa2_test01_bldngs;
-# select t2.gid, id, xcoord, ycoord, st_transform(t2.geom, 4283) as geom
-# into public.sa2_test01_bldngs
-# from abs_sa2.sa2_2016_aus t1,
-# subset_scaffolding_sydney_100m t2
-# where st_contains(st_transform(t1.geom, 28356), t2.geom) 
-# and sa2_main16 = '119011361'
-# "
-# )
-## recpt <- "public.sa2_test01_bldngs" ## "public.mb_test01_bldngs"
-## instead now try all the points in the subset_square
+ll_corner <- c(150.913, -33.938)
+smidge <- 0.03
+extent <- list(xmin = ll_corner[1], xmax = ll_corner[1] + smidge, ymin = ll_corner[2], ymax = ll_corner[2] + smidge)
+extent
+
+res <- 0.0001
+
+cnts_x <- seq(extent[[1]] , extent[[2]], res)
+cnts_x
+cnts_y <- seq(extent[[3]] , extent[[4]], res)
+cnts_y
+
+cnts <- merge(cnts_x, cnts_y)
+##plot(ecosystem_bound[ecosystem_bound@data$Id == 1,])
+##points(cnts)
+##axis(1); axis(2)
+dir()
+pts <- SpatialPointsDataFrame(cnts, data.frame(Id = 1:nrow(cnts), xcoord = cnts[,1], ycoord = cnts[,2]), proj4string = CRS("+proj=longlat +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +no_defs"))
+
+## set your favourite output directory, or use getwd() to dump results to the current dir
+outdir <- "~/projects/GIS_regression_mapping_scripted_workflow/working_temporary"
+dir(outdir)
+outfile <- "subset_liverpool_10m" # set a good name for the output file
+writeOGR(pts,
+         outdir,
+         outfile,
+         driver = "ESRI Shapefile", overwrite = T)
+
+## shp2pgis
+setwd(outdir)
+dir()
+srid <- 4283 # this is GDA94, a standard coordinate system across Aust
+infile <- outfile
+
+## TODO, the upload to the server is not easy from R for some reason, use the shell
+schema <- "public"
+host <- "swish4.tern.org.au"
+d <- "postgis_car"
+u <- "postgis_user"
+txt <- paste("/usr/bin/shp2pgsql -s ", srid, " -D ", infile, ".shp ",
+             schema, ".", infile, " > ", infile, ".sql", sep = "")
+cat(txt)
+system(txt)
+txt <- paste("/usr/bin/psql  -d ", d, " -U ", u, " -W -h ", host,
+             " -f ", infile, ".sql", sep = "")
+cat(txt)
+dbSendQuery(ch, sprintf("drop table %s", infile))
+system(txt,)
+infile
+setwd("..")
+
+## now run the scripts in order
+
+
 strt <- Sys.time()
+## declare inputs
 ## Make sure you include SCHEMA.and.TABLE
-recpt <- "public.subset_scaffolding_sydney_100m_437"
+recpt <- sprintf("public.%s", infile)
 ## if the SRID is differnt need to st_transform to the GDA94 projection
 namlist <- dbGetQuery(ch, paste("select * from ",recpt," limit 1"))
 namlist2 <- paste(names(namlist), sep = "", collapse = ", ")
-namlist2 <- gsub("geom", "st_transform(geom, 4283) as geom", namlist2)
+#namlist2 <- gsub("geom", "st_transform(geom, 4283) as geom", namlist2)
 dbSendQuery(ch,
-## cat(
-paste("drop table if exists ",recpt,"_V2;
+            ## cat(
+            paste("drop table if exists ",recpt,"_V2;
 select ",namlist2," 
 into ",recpt,"_v2
 from ",recpt," t1
@@ -49,7 +90,7 @@ from ",recpt," t1
 # and so update the recpt name
 recpt <- paste(recpt, "_v2", sep = "")
 
-
+#### 02 create buffers ####
 radii <- c(400,500,1000,1200,10000)
 ## note we are using the australian albers equal area projection
 ## so set this srid. this ensures computations are in metres
@@ -100,8 +141,8 @@ ed - strt
 #### 08 Merge master table ####
 # Note that some of these are centred and standardised 
 predicted <- dbGetQuery(ch,
-##cat(
-paste("
+                        ##cat(
+                        paste("
 select gid, xcoord as x, ycoord as y, 4.563 + ((0.701 * ((grid_code-10)/10))) + (1.203 * RASTERVALU) + (0.828 *((case when RDS_500M is null then 0 else RDS_500M end /1000) - 0.65)) + (-0.17 * ((OPENSPACE_10000M-10)/10)) + (2.629 * NPI_DENS_400) + (4.083 * NPI_DENS_1000) + (0.451 * ((INDUSTRIAL_10000M - 10)/10)) + (-0.14 * (year-2008)) as predicted, main_merge.*
 from (
 select t1.gid, t7.xcoord, t7.ycoord, t1.grid_code, t2.RASTERVALU, t3.RDS_500M, t4.area_ind as INDUSTRIAL_10000M, t4.area_open as OPENSPACE_10000M, t5.npi_dens_400, t6.npi_dens_1000, ",yy," as year
@@ -137,12 +178,13 @@ gridded(pred) <- ~x+y
 
 plot(pred)
 dir()
-## dir.create("working_temporary")
+dir.create("working_temporary")
 pred <- raster(pred)
 #writeRaster(pred, "working_temporary/gis_no2_2007_sa2_test01.tif", format = "GTiff")
 #writeRaster(pred, "working_temporary/gis_no2_2007_438.tif", format = "GTiff", overwrite=T)
 #writeRaster(pred, "working_temporary/gis_no2_2007_437.tif", format = "GTiff", overwrite=T)
-writeRaster(pred, "working_temporary/gis_no2_2016_437.tif", format = "GTiff", overwrite=T)
+#writeRaster(pred, "working_temporary/gis_no2_2016_437_50m.tif", format = "GTiff", overwrite=T)
+writeRaster(pred, "working_temporary/gis_no2_2016_liverpool_10m.tif", format = "GTiff", overwrite=T)
 
 ## clean up the database for the working tables while developing this run?
 tbls <- pgListTables(ch, "public")
