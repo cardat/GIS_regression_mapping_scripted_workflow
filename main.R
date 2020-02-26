@@ -40,7 +40,7 @@ pts <- SpatialPointsDataFrame(cnts, data.frame(Id = 1:nrow(cnts), xcoord = cnts[
 ## set your favourite output directory, or use getwd() to dump results to the current dir
 outdir <- "~/projects/GIS_regression_mapping_scripted_workflow/working_temporary"
 dir.create(outdir)
-outfile <- "subset_carlton_10m" # set a good name for the output file
+outfile <- "subset_liverpool_10m" # set a good name for the output file
 writeOGR(pts,
          outdir,
          outfile,
