@@ -9,15 +9,15 @@ library(rgdal)
 
 #### 01 Connect to postGIS database ####
 ## TODO 1) should we ask pgpass function to storePassword? 2) need to explain that some data is restricted and postgis_user can only do demo with public data, for full satellite implementation need to get permission and logon as specified username 
-username <- "ivan_hanigan"
+username <- "postgis_user"
 source("code/01_test_connection_to_PostGIS.R")
 
 ## create a random label to identify the working files for this run
 unique_name <- basename(tempfile())
 
 ## now load the spatial data of the estimation nodes
-
-ll_corner <- c(144.97, -37.81)
+## this is the lower left corner
+ll_corner <- c(150.913, -33.938)
 ## this is the bounding box extent and in dec degs
 smidge <- 0.01
 extent <- list(xmin = ll_corner[1], xmax = ll_corner[1] + smidge, ymin = ll_corner[2], ymax = ll_corner[2] + smidge)
