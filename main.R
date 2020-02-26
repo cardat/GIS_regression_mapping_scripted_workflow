@@ -9,7 +9,7 @@ library(rgdal)
 
 #### 01 Connect to postGIS database ####
 ## TODO 1) should we ask pgpass function to storePassword? 2) need to explain that some data is restricted and postgis_user can only do demo with public data, for full satellite implementation need to get permission and logon as specified username 
-username <- "postgis_user"
+username <- "ivan_hanigan"
 source("code/01_test_connection_to_PostGIS.R")
 
 ## create a random label to identify the working files for this run
@@ -17,12 +17,13 @@ unique_name <- basename(tempfile())
 
 ## now load the spatial data of the estimation nodes
 
-ll_corner <- c(150.913, -33.938)
-smidge <- 0.03
+ll_corner <- c(144.97, -37.81)
+## this is the bounding box extent and in dec degs
+smidge <- 0.01
 extent <- list(xmin = ll_corner[1], xmax = ll_corner[1] + smidge, ymin = ll_corner[2], ymax = ll_corner[2] + smidge)
 extent
 
-res <- 0.0001
+res <- 0.001 #also dec degs
 
 cnts_x <- seq(extent[[1]] , extent[[2]], res)
 cnts_x
@@ -38,8 +39,8 @@ pts <- SpatialPointsDataFrame(cnts, data.frame(Id = 1:nrow(cnts), xcoord = cnts[
 
 ## set your favourite output directory, or use getwd() to dump results to the current dir
 outdir <- "~/projects/GIS_regression_mapping_scripted_workflow/working_temporary"
-dir(outdir)
-outfile <- "subset_liverpool_10m" # set a good name for the output file
+dir.create(outdir)
+outfile <- "subset_carlton_10m" # set a good name for the output file
 writeOGR(pts,
          outdir,
          outfile,
@@ -55,7 +56,7 @@ infile <- outfile
 schema <- "public"
 host <- "swish4.tern.org.au"
 d <- "postgis_car"
-u <- "postgis_user"
+u <- "ivan_hanigan"
 txt <- paste("/usr/bin/shp2pgsql -s ", srid, " -D ", infile, ".shp ",
              schema, ".", infile, " > ", infile, ".sql", sep = "")
 cat(txt)
@@ -63,9 +64,9 @@ system(txt)
 txt <- paste("/usr/bin/psql  -d ", d, " -U ", u, " -W -h ", host,
              " -f ", infile, ".sql", sep = "")
 cat(txt)
-dbSendQuery(ch, sprintf("drop table %s", infile))
-system(txt,)
-infile
+#dbSendQuery(ch, sprintf("drop table %s", infile))
+#system(txt)
+#infile
 setwd("..")
 
 ## now run the scripts in order
@@ -78,6 +79,7 @@ recpt <- sprintf("public.%s", infile)
 ## if the SRID is differnt need to st_transform to the GDA94 projection
 namlist <- dbGetQuery(ch, paste("select * from ",recpt," limit 1"))
 namlist2 <- paste(names(namlist), sep = "", collapse = ", ")
+# TODO do we check the input srid?
 #namlist2 <- gsub("geom", "st_transform(geom, 4283) as geom", namlist2)
 dbSendQuery(ch,
             ## cat(
@@ -85,8 +87,7 @@ dbSendQuery(ch,
 select ",namlist2," 
 into ",recpt,"_v2
 from ",recpt," t1
-", sep = "")            
-)
+", sep = ""))
 # and so update the recpt name
 recpt <- paste(recpt, "_v2", sep = "")
 
@@ -193,3 +194,4 @@ tbls_todo
 for(tb in tbls_todo$relname){
   dbSendQuery(ch, sprintf("drop table %s", tb))
 }
+dbDisconnect(ch)
