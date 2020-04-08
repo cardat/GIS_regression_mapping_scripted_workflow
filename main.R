@@ -1,77 +1,38 @@
 ## GIS_regression_mapping_scripted_workflow
 ## ivanhanigan
 
-## load libraries and functions
+##### set up ####
+## TODO need to explain that some data is restricted and postgis_user can only do demo with public data, for full satellite implementation need to get permission and logon as specified username
+username <- "postgis_user"
+
+## set your favourite output directory, or use getwd() to dump results to the current dir
+outdir <- "~/projects/GIS_regression_mapping_scripted_workflow/working_temporary"
+dir.create(outdir)
+
+## enter the name of a ESRI shapefile that has points where you want
+## to estimate pollution
+infile <- "a/path/to/a/shapefile.shp"
+## if you want to create a regular grid of points use the codes at code/make_gridded_shapefile.R
+
+## create a random label to identify the working files for this run
+unique_name <- basename(tempfile())
+## don't change it here, it is used to keep track of your run, and
+## clean up after
+
+#### load libraries and functions ####
 source("code/function_get_pgpass.R")
 source("code/function_pgListTables.R")
 library(raster)
 library(rgdal)
 
 #### 01 Connect to postGIS database ####
-## TODO 1) should we ask pgpass function to storePassword? 2) need to explain that some data is restricted and postgis_user can only do demo with public data, for full satellite implementation need to get permission and logon as specified username 
-username <- "postgis_user"
+## TODO should we ask pgpass function to storePassword?
 source("code/01_test_connection_to_PostGIS.R")
 
-## create a random label to identify the working files for this run
-unique_name <- basename(tempfile())
-
-## now load the spatial data of the estimation nodes
-## this is the lower left corner
-ll_corner <- c(150.913, -33.938)
-## this is the bounding box extent and in dec degs
-smidge <- 0.01
-extent <- list(xmin = ll_corner[1], xmax = ll_corner[1] + smidge, ymin = ll_corner[2], ymax = ll_corner[2] + smidge)
-extent
-
-res <- 0.001 #also dec degs
-
-cnts_x <- seq(extent[[1]] , extent[[2]], res)
-cnts_x
-cnts_y <- seq(extent[[3]] , extent[[4]], res)
-cnts_y
-
-cnts <- merge(cnts_x, cnts_y)
-##plot(ecosystem_bound[ecosystem_bound@data$Id == 1,])
-##points(cnts)
-##axis(1); axis(2)
-dir()
-pts <- SpatialPointsDataFrame(cnts, data.frame(Id = 1:nrow(cnts), xcoord = cnts[,1], ycoord = cnts[,2]), proj4string = CRS("+proj=longlat +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +no_defs"))
-
-## set your favourite output directory, or use getwd() to dump results to the current dir
-outdir <- "~/projects/GIS_regression_mapping_scripted_workflow/working_temporary"
-dir.create(outdir)
-outfile <- "subset_liverpool_10m" # set a good name for the output file
-writeOGR(pts,
-         outdir,
-         outfile,
-         driver = "ESRI Shapefile", overwrite = T)
-
-## shp2pgis
-setwd(outdir)
-dir()
-srid <- 4283 # this is GDA94, a standard coordinate system across Aust
-infile <- outfile
-
-## TODO, the upload to the server is not easy from R for some reason, use the shell
-schema <- "public"
-host <- "swish4.tern.org.au"
-d <- "postgis_car"
-u <- "ivan_hanigan"
-txt <- paste("/usr/bin/shp2pgsql -s ", srid, " -D ", infile, ".shp ",
-             schema, ".", infile, " > ", infile, ".sql", sep = "")
-cat(txt)
-system(txt)
-txt <- paste("/usr/bin/psql  -d ", d, " -U ", u, " -W -h ", host,
-             " -f ", infile, ".sql", sep = "")
-cat(txt)
-#dbSendQuery(ch, sprintf("drop table %s", infile))
-#system(txt)
-#infile
-setwd("..")
+## load the shapefile to postGIS
+source("code/01_01_load_shp2pgsql.R")
 
 ## now run the scripts in order
-
-
 strt <- Sys.time()
 ## declare inputs
 ## Make sure you include SCHEMA.and.TABLE
@@ -84,7 +45,7 @@ namlist2 <- paste(names(namlist), sep = "", collapse = ", ")
 dbSendQuery(ch,
             ## cat(
             paste("drop table if exists ",recpt,"_V2;
-select ",namlist2," 
+select ",namlist2,"
 into ",recpt,"_v2
 from ",recpt," t1
 ", sep = ""))
@@ -98,9 +59,9 @@ radii <- c(400,500,1000,1200,10000)
 srid <- 3577
 ## if you need to check it exists:
 # dbGetQuery(ch,
-# sprintf("select * from spatial_ref_sys where auth_srid = %s", srid)           
+# sprintf("select * from spatial_ref_sys where auth_srid = %s", srid)
 #            )
-source("code/02_buffers.R")                          
+source("code/02_buffers.R")
 
 #### 03 extract OMI satellite data ####
 ## THIS IS RESTRCTED DATA
@@ -115,7 +76,7 @@ source("code/03_extract_OMI.R")
 impsa <- "impervious_surfaces.impsa_437_10K"
 ## first test  "impervious_surfaces.impsa_mb_test_01"
 ## TODO we should generalise this so it is not necessarily the 1200 buffer
-source("code/04_overlay_IMPSA_with_1200M.R")         
+source("code/04_overlay_IMPSA_with_1200M.R")
 
 #### 05 major roads ####
 ## this is restricted data
@@ -140,7 +101,7 @@ ed <- Sys.time()
 ed - strt
 
 #### 08 Merge master table ####
-# Note that some of these are centred and standardised 
+# Note that some of these are centred and standardised
 predicted <- dbGetQuery(ch,
                         ##cat(
                         paste("
@@ -148,19 +109,19 @@ select gid, xcoord as x, ycoord as y, 4.563 + ((0.701 * ((grid_code-10)/10))) + 
 from (
 select t1.gid, t7.xcoord, t7.ycoord, t1.grid_code, t2.RASTERVALU, t3.RDS_500M, t4.area_ind as INDUSTRIAL_10000M, t4.area_open as OPENSPACE_10000M, t5.npi_dens_400, t6.npi_dens_1000, ",yy," as year
 from ",unique_name,"_impsa1200m t1
-left join 
+left join
 ",unique_name,"_omi_",yy," t2
 on t1.gid = t2.gid
-left join 
+left join
 ",unique_name,"_majrds500mAlbers_total_road_length t3
 on t1.gid = t3.gid
-left join 
+left join
 ",unique_name,"_ind_insct_buffer_area t4
 on t1.gid = t4.gid
-left join 
+left join
 ",unique_name,"_npinox400m_dens t5
 on t1.gid = t5.gid
-left join 
+left join
 ",unique_name,"_npinox1000m_dens t6
 on t1.gid = t6.gid
 left join ",recpt," t7
