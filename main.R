@@ -26,19 +26,77 @@ library(raster)
 library(rgdal)
 
 #### 01 Connect to postGIS database ####
-## TODO should we ask pgpass function to storePassword?
+## TODO 1) should we ask pgpass function to storePassword? 2) need to explain that some data is restricted and postgis_user can only do demo with public data, for full satellite implementation need to get permission and logon as specified username
+username <- "ed_jegasothy"
 source("code/01_test_connection_to_PostGIS.R")
 
-## load the shapefile to postGIS
-source("code/01_01_load_shp2pgsql.R")
+## create a random label to identify the working files for this run
+unique_name <- basename(tempfile())
 
+## now load the spatial data of the estimation nodes
+
+ll_corner <- c(144.9544, -37.81)
+## this is the bounding box extent and in dec degs
+smidge <- 0.024
+extent <- list(xmin = ll_corner[1], xmax = ll_corner[1] + smidge, ymin = ll_corner[2], ymax = ll_corner[2] + (smidge - 0.014))
+extent
+
+res <- 0.0001 #also dec degs
+
+cnts_x <- seq(extent[[1]] , extent[[2]], res)
+cnts_x
+cnts_y <- seq(extent[[3]] , extent[[4]], res)
+cnts_y
+
+cnts <- merge(cnts_x, cnts_y)
+##plot(ecosystem_bound[ecosystem_bound@data$Id == 1,])
+##points(cnts)
+##axis(1); axis(2)
+dir()
+pts <- SpatialPointsDataFrame(cnts, data.frame(Id = 1:nrow(cnts), xcoord = cnts[,1], ycoord = cnts[,2]), proj4string = CRS("+proj=longlat +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +no_defs"))
+
+## set your favourite output directory, or use getwd() to dump results to the current dir
+outdir <- "~/projects/GIS_regression_mapping_scripted_workflow/working_temporary"
+dir.create(outdir)
+outfile <- "subset_carlton_10m" # set a good name for the output file
+writeOGR(pts,
+         outdir,
+         outfile,
+         driver = "ESRI Shapefile", overwrite = T)
+
+## shp2pgis
+setwd(outdir)
+dir()
+srid <- 4283 # this is GDA94, a standard coordinate system across Aust
+infile <- outfile
+
+## TODO, the upload to the server is not easy from R for some reason, use the shell
+schema <- "public"
+host <- "swish4.tern.org.au"
+d <- "postgis_car"
+u <- "ivan_hanigan"
+txt <- paste("/usr/bin/shp2pgsql -s ", srid, " -D ", infile, ".shp ",
+             schema, ".", infile, " > ", infile, ".sql", sep = "")
+cat(txt)
+system(txt)
+txt <- paste("/usr/bin/psql  -d ", d, " -U ", u, " -W -h ", host,
+             " -f ", infile, ".sql", sep = "")
+cat(txt)
+#dbSendQuery(ch, sprintf("drop table %s", infile))
+#system(txt)
+#infile
+setwd("..")
+getwd()
 ## now run the scripts in order
+
+
 strt <- Sys.time()
 ## declare inputs
 ## Make sure you include SCHEMA.and.TABLE
 recpt <- sprintf("public.%s", infile)
 ## if the SRID is differnt need to st_transform to the GDA94 projection
-namlist <- dbGetQuery(ch, paste("select * from ",recpt," limit 1"))
+namlist <- dbGetQuery(ch, paste("select * from ",recpt," limit 10"))
+## ignore the warning about unrecognised field type
 namlist2 <- paste(names(namlist), sep = "", collapse = ", ")
 # TODO do we check the input srid?
 #namlist2 <- gsub("geom", "st_transform(geom, 4283) as geom", namlist2)
@@ -73,14 +131,14 @@ omi <- paste("sat_omi_no2.omi_no2_",yy,"kr1_new", sep = "")
 source("code/03_extract_OMI.R")
 
 #### 04 impervious_surfaces ####
-impsa <- "impervious_surfaces.impsa_437_10K"
+impsa <- "impervious_surfaces.impsa"
 ## first test  "impervious_surfaces.impsa_mb_test_01"
 ## TODO we should generalise this so it is not necessarily the 1200 buffer
 source("code/04_overlay_IMPSA_with_1200M.R")
 
 #### 05 major roads ####
 ## this is restricted data
-majrds <- "roads_psma.majrds_437_10k"
+majrds <- "roads_psma.majrds"
 ## NB we reproject this into metres albers equal area
 
 source("code/05_majrds_intersect_with_500m_buffer.R")
@@ -93,7 +151,7 @@ radii_todo <- c(1000, 400)
 source("code/06_NPINOX_extract.R")
 
 #### 07 industrial and openspace_buffer ####
-ind <- "abs_mb.mb_2011_nsw_albers"
+ind <- "abs_mb.mb_2011_vic_albers"
 radii_todo <- 10000
 
 source("code/07_industrial_or_open_in_buffer.R")
@@ -127,8 +185,7 @@ on t1.gid = t6.gid
 left join ",recpt," t7
 on t1.gid = t7.gid
 ) main_merge
-", sep = "")
-)
+", sep = ""))
 summary(predicted)
 predicted[1:10,]
 predicted[1:10,1:4]
@@ -140,8 +197,10 @@ gridded(pred) <- ~x+y
 
 plot(pred)
 dir()
-dir.create("working_temporary")
+#dir.create("working_temporary")
 pred <- raster(pred)
+writeRaster(pred, sprintf("working_temporary/%s.shp", infile), format = "GTiff", overwrite=T)
+
 #writeRaster(pred, "working_temporary/gis_no2_2007_sa2_test01.tif", format = "GTiff")
 #writeRaster(pred, "working_temporary/gis_no2_2007_438.tif", format = "GTiff", overwrite=T)
 #writeRaster(pred, "working_temporary/gis_no2_2007_437.tif", format = "GTiff", overwrite=T)
