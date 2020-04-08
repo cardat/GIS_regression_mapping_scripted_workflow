@@ -10,8 +10,4 @@ ch <- dbConnect(drv, dbname = pwd[,3],
                 user = pwd[,4], password = pwd[,5])
 rm(pwd) # removes the password
 
-dbGetQuery(ch, "select * from public.dbsize ")
-
-#### load receptor locations ####
-# TODO
-
+##dbGetQuery(ch, "select * from public.dbsize ")

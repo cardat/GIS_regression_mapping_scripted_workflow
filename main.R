@@ -1,99 +1,97 @@
 ## GIS_regression_mapping_scripted_workflow
 ## ivanhanigan
 
-##### set up ####
-## TODO need to explain that some data is restricted and postgis_user can only do demo with public data, for full satellite implementation need to get permission and logon as specified username
-username <- "postgis_user"
-
-## set your favourite output directory, or use getwd() to dump results to the current dir
-outdir <- "~/projects/GIS_regression_mapping_scripted_workflow/working_temporary"
-dir.create(outdir)
-
-## enter the name of a ESRI shapefile that has points where you want
-## to estimate pollution
-infile <- "a/path/to/a/shapefile.shp"
-## if you want to create a regular grid of points use the codes at code/make_gridded_shapefile.R
-
-## create a random label to identify the working files for this run
-unique_name <- basename(tempfile())
-## don't change it here, it is used to keep track of your run, and
-## clean up after
-
 #### load libraries and functions ####
 source("code/function_get_pgpass.R")
 source("code/function_pgListTables.R")
 library(raster)
 library(rgdal)
 
-#### 01 Connect to postGIS database ####
-## TODO 1) should we ask pgpass function to storePassword? 2) need to explain that some data is restricted and postgis_user can only do demo with public data, for full satellite implementation need to get permission and logon as specified username
-username <- "ed_jegasothy"
-source("code/01_test_connection_to_PostGIS.R")
+##### set up ####
+## TODO need to explain that some data is restricted and postgis_user can only do demo with public data, for full satellite implementation need to get permission and logon as specified username
+username <- "ivan_hanigan"
+
+## set the year that is of interest for this run
+yy <- 2016
+
+## 1) enter the name of a ESRI shapefile that has points where you want to estimate pollution
+## 2) don't include the file extension '.shp'
+## 3) if you don't want this, set to NA 
+estimation_points_filename <- "data_provided/liverpool_sensitive_bld_labs"
+if(!is.na(estimation_points_filename)){
+estimation_points <- readOGR(dirname(estimation_points_filename), basename(estimation_points_filename))
+}
+
+## if you don't have a estimation_points file, you can create a grid 
+## or perhaps you also want to create a regular grid of points, set this to TRUE otherwise FALSE
+estimation_grid <- TRUE 
+
+## and set the longitudes and latitudes (use bbox or numerics), resolution and a buffer zone around the edge
+## IF YOU WANT A DIFFERENT GRID YOU CAN SET THE XMIN, XMAX, YMIN, YMAX HERE INSTEAD
+if(exists("estimation_points")){
+xmn <- estimation_points@bbox[1,1] 
+xmx <- estimation_points@bbox[1,2] 
+ymn <- estimation_points@bbox[2,1]
+ymx <- estimation_points@bbox[2,2]
+## set the resolution (in dec degs)
+res <- 0.001 
+smidge <- 0.0075 # a constant to expand the edge of the estimation grid by (in dec degs)
+
+## now create the grid
+if(estimation_grid){
+source("code/do_gridded_shapefile.R")
+## NB this assumes GDA94/WGS80
+
+plot(pts, cex = 0.01)
+plot(estimation_points, add = T, col = 'red')
+}
+} else {
+  print("you'll need to add xmin, xmax, ymin and max because estimation_points is NA")
+}
+
+## and now the final selection of estimation points, use the grid if it exists 
+if(exists("pts")){ 
+  est_pts <- pts@data
+} else {
+  est_pts <- estimation_points@data
+}
+
+## set your favourite output directory, or use getwd() to dump results to the current dir
+outdir <- "working_temporary"
+if(!file.exists(outdir)) dir.create(outdir)
+outfile <- sprintf("demo1_liverpool_res%s", format(res, scientific = FALSE)) # set a good name for the output file
 
 ## create a random label to identify the working files for this run
 unique_name <- basename(tempfile())
+## don't change it here, it is used to keep track of your run, and clean up after
 
+#### 01 Connect to postGIS database ####
+## TODO 1) should we ask pgpass function to storePassword? 2) need to explain that some data is restricted and postgis_user can only do demo with public data, for full satellite implementation need to get permission and logon as specified username
+
+source("code/01_test_connection_to_PostGIS.R")
+
+#### load data ####
 ## now load the spatial data of the estimation nodes
+est_pts_tbl <- sprintf("%s_est_pts", unique_name)
+names(est_pts) <- tolower(names(est_pts))
+dbWriteTable(ch, est_pts_tbl, est_pts, row.names = F)
+dbSendQuery(ch, sprintf("alter table public.%s add column gid serial primary key", est_pts_tbl))
 
-ll_corner <- c(144.9544, -37.81)
-## this is the bounding box extent and in dec degs
-smidge <- 0.024
-extent <- list(xmin = ll_corner[1], xmax = ll_corner[1] + smidge, ymin = ll_corner[2], ymax = ll_corner[2] + (smidge - 0.014))
-extent
+# dbSendQuery(ch, sprintf("SELECT AddGeometryColumn('public', '%s', 'geom', 4283, 'POINT', 2)", est_pts_tbl))
+# dbSendQuery(ch, sprintf("ALTER TABLE public.%s ADD CONSTRAINT geometry_valid_check CHECK (ST_isvalid(geom))", est_pts_tbl))
+# dbSendQuery(ch, sprintf("UPDATE public.%s SET geom=ST_GeomFromText('POINT('|| xcoord ||' '|| ycoord ||')',4283)", est_pts_tbl))
+dbSendQuery(ch, 
+            sprintf("SELECT AddGeometryColumn('public', '%s', 'geom', 4283, 'POINT', 2);
+                     ALTER TABLE public.%s ADD CONSTRAINT geometry_valid_check CHECK (ST_isvalid(geom));
+                     UPDATE public.%s SET geom=ST_GeomFromText('POINT('|| xcoord ||' '|| ycoord ||')',4283);", est_pts_tbl, est_pts_tbl, est_pts_tbl))
 
-res <- 0.0001 #also dec degs
+#dbGetQuery(ch, sprintf("select * from %s limit 1", est_pts_tbl))
 
-cnts_x <- seq(extent[[1]] , extent[[2]], res)
-cnts_x
-cnts_y <- seq(extent[[3]] , extent[[4]], res)
-cnts_y
-
-cnts <- merge(cnts_x, cnts_y)
-##plot(ecosystem_bound[ecosystem_bound@data$Id == 1,])
-##points(cnts)
-##axis(1); axis(2)
-dir()
-pts <- SpatialPointsDataFrame(cnts, data.frame(Id = 1:nrow(cnts), xcoord = cnts[,1], ycoord = cnts[,2]), proj4string = CRS("+proj=longlat +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +no_defs"))
-
-## set your favourite output directory, or use getwd() to dump results to the current dir
-outdir <- "~/projects/GIS_regression_mapping_scripted_workflow/working_temporary"
-dir.create(outdir)
-outfile <- "subset_carlton_10m" # set a good name for the output file
-writeOGR(pts,
-         outdir,
-         outfile,
-         driver = "ESRI Shapefile", overwrite = T)
-
-## shp2pgis
-setwd(outdir)
-dir()
-srid <- 4283 # this is GDA94, a standard coordinate system across Aust
-infile <- outfile
-
-## TODO, the upload to the server is not easy from R for some reason, use the shell
-schema <- "public"
-host <- "swish4.tern.org.au"
-d <- "postgis_car"
-u <- "ivan_hanigan"
-txt <- paste("/usr/bin/shp2pgsql -s ", srid, " -D ", infile, ".shp ",
-             schema, ".", infile, " > ", infile, ".sql", sep = "")
-cat(txt)
-system(txt)
-txt <- paste("/usr/bin/psql  -d ", d, " -U ", u, " -W -h ", host,
-             " -f ", infile, ".sql", sep = "")
-cat(txt)
-#dbSendQuery(ch, sprintf("drop table %s", infile))
-#system(txt)
-#infile
-setwd("..")
-getwd()
 ## now run the scripts in order
-
-
 strt <- Sys.time()
 ## declare inputs
 ## Make sure you include SCHEMA.and.TABLE
-recpt <- sprintf("public.%s", infile)
+recpt <- sprintf("public.%s", est_pts_tbl)
 ## if the SRID is differnt need to st_transform to the GDA94 projection
 namlist <- dbGetQuery(ch, paste("select * from ",recpt," limit 10"))
 ## ignore the warning about unrecognised field type
@@ -125,7 +123,7 @@ source("code/02_buffers.R")
 ## THIS IS RESTRCTED DATA
 ## declare inputs
 ## note that old is original, new was provided during the 45andUp experiment
-yy <- 2016
+##yy <- 2016
 omi <- paste("sat_omi_no2.omi_no2_",yy,"kr1_new", sep = "")
 ## TODO should this compute the average of pixels within polygons (and if so should it be weighted by area of overlap?)
 source("code/03_extract_OMI.R")
@@ -151,7 +149,7 @@ radii_todo <- c(1000, 400)
 source("code/06_NPINOX_extract.R")
 
 #### 07 industrial and openspace_buffer ####
-ind <- "abs_mb.mb_2011_vic_albers"
+ind <- "abs_mb.mb_2011_aus_albers"
 radii_todo <- 10000
 
 source("code/07_industrial_or_open_in_buffer.R")
@@ -199,14 +197,10 @@ plot(pred)
 dir()
 #dir.create("working_temporary")
 pred <- raster(pred)
-writeRaster(pred, sprintf("working_temporary/%s.shp", infile), format = "GTiff", overwrite=T)
+writeRaster(pred, sprintf("%s/%s.shp", outdir, outfile), format = "GTiff", overwrite=T)
 
-#writeRaster(pred, "working_temporary/gis_no2_2007_sa2_test01.tif", format = "GTiff")
-#writeRaster(pred, "working_temporary/gis_no2_2007_438.tif", format = "GTiff", overwrite=T)
-#writeRaster(pred, "working_temporary/gis_no2_2007_437.tif", format = "GTiff", overwrite=T)
-#writeRaster(pred, "working_temporary/gis_no2_2016_437_50m.tif", format = "GTiff", overwrite=T)
-writeRaster(pred, "working_temporary/gis_no2_2016_liverpool_10m.tif", format = "GTiff", overwrite=T)
 
+#### clean up ####
 ## clean up the database for the working tables while developing this run?
 tbls <- pgListTables(ch, "public")
 tbls_todo <- tbls[grep(unique_name, tbls$relname),]
@@ -215,3 +209,4 @@ for(tb in tbls_todo$relname){
   dbSendQuery(ch, sprintf("drop table %s", tb))
 }
 dbDisconnect(ch)
+#lapply(dbListConnections(drv = dbDriver("PostgreSQL")), function(x) {dbDisconnect(conn = x)})
