@@ -12,26 +12,24 @@ library(rgdal)
 username <- "ivan_hanigan"
 
 ## set the year that is of interest for this run
-yy <- 2015
+yy <- 2006
 ## set your favourite output directory, or use getwd() to dump results to the current dir
 outdir <- "working_temporary"
 if(!file.exists(outdir)) dir.create(outdir)
-
-run_label <- "demo3_liverpool"
-outfile <- sprintf("%s_%s_res%s", run_label, yy, format(res, scientific = FALSE)) # set a good name for the output file
-
-## create a random label to identify the working files for this run in the database
-unique_name <- basename(tempfile())
-## don't change it here, it is used to keep track of your run, and clean up after
 
 ## set up the estimation points data
 ## 1) enter the name of a ESRI shapefile that has points where you want to estimate pollution
 ## 2) don't include the file extension '.shp'
 ## 3) if you don't want this, set to NA
-estimation_points_filename <- "data_provided/liverpool_sensitive_bld_labs"
+estimation_points_filename <- "data_provided/SatLUR_NO2_06_case_study_sydney_absmb11_centroids" #"liverpool_sensitive_bld_labs"
 if(!is.na(estimation_points_filename)){
 estimation_points <- readOGR(dirname(estimation_points_filename), basename(estimation_points_filename))
+str(estimation_points@data)
 }
+
+## set the names of the columns that contain the x and y (if not using a shp file, this will be required for the grid defined below)
+xcoord <- "x"
+ycoord <- "y"
 
 ## if you don't have a estimation_points file, you can create a grid
 ## if you want to create a regular grid of points, set this to TRUE otherwise FALSE
@@ -39,8 +37,20 @@ estimation_grid <- TRUE
 ## NB this is hard coded to assume GDA94, which is a safe bet for Australian datasets
 est_grid_srid <- 4283
 ## set the resolution (in dec degs)
-res <- 0.0001
-smidge <- 0.00075 # a constant to expand the edge of the estimation grid by (in dec degs)
+res <- 0.005
+smidge <- 0.0075 # a constant to expand the edge of the estimation grid by (in dec degs)
+
+## set a name for the output
+run_label <- "demo_case_study_region"
+if(estimation_grid){
+  outfile <- sprintf("%s_%s_res%s", run_label, yy, format(res, scientific = FALSE)) 
+} else {
+  outfile <- sprintf("%s_%s", run_label, yy) 
+}
+
+## create a random label to identify the working files for this run in the database
+unique_name <- basename(tempfile())
+## don't change it here, it is used to keep track of your run, and clean up after
 
 ## and set the longitudes and latitudes (use bbox or numerics), resolution and a buffer zone around the edge
 ## IF YOU WANT A DIFFERENT GRID YOU CAN SET THE XMIN, XMAX, YMIN, YMAX HERE INSTEAD (in dec dgs, gda94)
@@ -53,17 +63,13 @@ ymx <- estimation_points@bbox[2,2]
 ## now create the grid
 if(estimation_grid){
 source("code/do_gridded_shapefile.R")
-
+names(pts) <- c("Id", "x", "y")
 plot(pts, cex = 0.01)
 plot(estimation_points, add = T, col = 'red')
 }
 } else {
   print("you'll need to add xmin, xmax, ymin and max because estimation_points is NA")
 }
-
-## set the names of the columns that contain the x and y
-xcoord <- "xcoord"
-ycoord <- "ycoord"
 
 ## and now the final selection of estimation points, use the grid if it exists
 if(estimation_grid){
