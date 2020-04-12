@@ -7,11 +7,11 @@ dbSendQuery(ch,
 paste("drop table if exists ",unique_name,"_",source_lyr_nam,ri,"m;
 select foo.*, case when bar.count_",source_lyr_nam," is null then 0 else bar.count_npinox end
 into ",unique_name,"_",source_lyr_nam,ri,"m
-from ",unique_name,"_buffer",ri," foo
+from ",unique_name,"_buffer_",ri," foo
 left join
 ( 
 select t1.gid, count(t2.gid) as count_",source_lyr_nam,", t1.geom 
-from ",unique_name,"_buffer",ri," t1,
+from ",unique_name,"_buffer_",ri," t1,
 ",source_lyr," t2
 where st_contains(t1.geom, t2.geom_albers)
 group by t1.gid, t1.geom
@@ -26,7 +26,7 @@ dbSendQuery(ch,
 paste("drop table if exists ",unique_name,"_npinox",ri,"m_insct_buffer;
 select t1.gid, st_intersection(t1.geom, t2.geom) as geom
 into ",unique_name,"_",source_lyr_nam,ri,"m_insct_buffer
-from ",unique_name,"_buffer",ri," t1,
+from ",unique_name,"_buffer_",ri," t1,
 ",coast," t2
 where st_intersects(t1.geom, t2.geom)", sep = "")
 )

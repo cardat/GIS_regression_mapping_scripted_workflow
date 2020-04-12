@@ -10,6 +10,8 @@ if(!require(swishdbtools)){
 }
 library("swishdbtools")
 source("code/function_extract_raster_in_buffer.R")
+source("code/function_extract_points_in_buffer.R")
+source("code/function_extract_lines_in_buffer.R")
 
 ##### set up ####
 ## set a username that exists on the database server
@@ -40,12 +42,11 @@ estimation_points_filename <- "data_provided/liverpool_sensitive_bld_labs"
 ## now load the spatial data of the estimation nodes
 source("code/do_load_estimation_points_to_database.R")
 
-#### 02 create buffers ####
+#### create buffers ####
 radii <- c(400,500,1000,1200,10000)
 source("code/do_buffers.R")
-## TODO maybe this is where we can do the intersect with coastline? calc area of landmass?
 
-#### 03 extract OMI satellite data ####
+#### extract OMI satellite data ####
 sql_txt <- extract_raster_in_buffer(
   out_table = paste(unique_name,"_",source_lyr_label,"_",yy, sep ="")
   ,
@@ -61,27 +62,52 @@ dbSendQuery(ch,
 sql_txt
 )
 
-#### 04 impervious_surfaces _IMPSA_with_1200M ####
-source_lyr <- "impervious_surfaces.impsa"
-source_lyr_geom_col <- "geom_albers"
-src_var <- "grid_code"
-## TODO this should be a raster?
-## TODO we should generalise this so it is not necessarily the 1200 buffer
-##_IMPSA_with_1200M
+#### impervious_surfaces _IMPSA_with_1200M ####
 buff_todo <- 1200
-lyr_out_suffix <- sprintf("impsa%sm", buff_todo)
+lyr_out_suffix = sprintf("impsa%sm", buff_todo)
 
-source("code/do_extract_points_in_buffer.R")
+sql_txt <- extract_points_in_buffer(
+  source_lyr = "impervious_surfaces.impsa"
+  ,
+  source_lyr_geom_col = "geom_albers"
+  ,
+  src_var = "grid_code"
+  ,
+  buff_todo = buff_todo
+  ,
+  out_table = paste(unique_name,"_",lyr_out_suffix, sep = "")
+  ,
+  buffer_table = paste(unique_name,"_buffer_",buff_todo, sep = "")
+)
 
-#### 05 major roads ####
-## this is restricted data
-source_lyr <- "roads_psma.majrds"
-## NB we reproject this into metres albers equal area
-source_lyr_nam <- "majrds"
+dbSendQuery(ch,
+# cat(
+sql_txt
+)
+
+#### major roads ####
 buff_todo <- 500
-source_lyr_var <- "subtype_cd"
-source_geom_col <- "geom_albers"
-source("code/do_extract_lines_in_buffer.R")
+out_table <- paste(unique_name,"_",source_lyr_nam, buff_todo,"m", sep = "")
+buff_lyr <- paste(unique_name,"_buffer_",buff_todo, sep = "")
+sql_txt <- extract_lines_in_buffer(
+  source_lyr = "roads_psma.majrds"
+  ,
+  source_lyr_nam = "majrds"
+  ,
+  buff_lyr = buff_lyr
+  ,
+  source_lyr_var ="subtype_cd"
+  ,
+  source_geom_col = "geom_albers"
+  ,
+  out_table <- out_table
+)
+
+dbSendQuery(ch,
+# cat(
+sql_txt
+)
+            
 ## do additional calculation specific to the psma majrds layer
 ## slect (subtype_cd =2 OR subtype_cd =3) these are multilane roads
 
@@ -146,7 +172,7 @@ names(coeffs) <- c("name", "coefficient", "variable", "var_name", "table_name")
 coeffs
 
 for(ty in 1:nrow(coeffs)){
-  #  ty = 3
+  #  ty = 1
   coeff_i <- coeffs[ty,"coefficient"]
   var1 <- coeffs[ty,"variable"]
   var <- ifelse(var1 == "intercept", "", paste(" * ", var1))
@@ -162,6 +188,7 @@ if(ty == 1){
 
   if(var2 == "year") next ## this is a constant, not a table
   main_merge0 <- paste0("t",ty-1, ".", var2)
+  if(ty == 1) next
 if(ty == 2){
   main_merge <- paste0("select t1.gid, ",xcoord,", ",ycoord,", ", main_merge0)
 } else {

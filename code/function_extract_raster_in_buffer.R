@@ -10,7 +10,7 @@ extract_raster_in_buffer <- function(
 ){
 sql_txt <- paste("drop table if exists ",out_table,";
 select t1.gid, st_value(t2.rast, t1.geom) as ",source_lyr_col_name,"
-into ",out_table,"_",source_lyr_label,"_",yy,"
+into ",out_table,"
 from ",recpt," t1, ",source_lyr_name," t2
 ", sep = "")
 sql_txt

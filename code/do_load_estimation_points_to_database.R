@@ -106,3 +106,7 @@ dbSendQuery(ch,
  ALTER COLUMN geom TYPE geometry(POINT,",srid,")
   USING ST_SetSRID(geom,", srid, ")", sep = "")
 )
+
+## check for primary key
+suppressWarnings(chck <- dbGetQuery(ch, sprintf("select * from %s limit 1", recpt)))
+if(length(grep("gid", names(chck))) == 0) stop("no variable called gid. is there a primarey key?")
