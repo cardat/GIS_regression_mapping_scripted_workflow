@@ -11,10 +11,14 @@ extract_points_in_buffer <- function(
   ,
   out_table = paste(unique_name,"_",lyr_out_suffix, sep = "")
   ,
+  out_colname = "grid_code"
+  ,
   buffer_table = paste(unique_name,"_buffer_",buff_todo, sep = "")
+  ,
+  fun = "avg"
 ){
 sql_txt <- paste("drop table if exists ",out_table,";
-select t1.gid, avg(t2.",src_var,") as ",src_var,"
+select t1.gid, ",fun,"(t2.",src_var,") as ",out_colname,"
 into ",out_table,"
 from ",buffer_table," t1, ",source_lyr," t2
 where st_intersects(t1.geom, t2.",source_lyr_geom_col,")

@@ -2,16 +2,21 @@
 ## ivanhanigan
 
 #### load libraries and functions ####
-library(raster)
-library(rgdal)
-library(devtools)
+if(!require("raster")) install.packages("raster"); library(raster)
+if(!require("rgdal")) install.packages("rgdal"); library(rgdal)
+if(!require("devtools")) install.packages("devtools"); library(devtools)
 if(!require(swishdbtools)){
   install_github("swish-climate-impact-assessment/swishdbtools")
 }
 library("swishdbtools")
+if(!require("RPostgreSQL")) install.packages("RPostgreSQL"); library("RPostgreSQL")
+
+## load bespoke functions for PostGIS work
+source("code/function_create_buffers.R")
 source("code/function_extract_raster_in_buffer.R")
 source("code/function_extract_points_in_buffer.R")
 source("code/function_extract_lines_in_buffer.R")
+
 
 ##### set up ####
 ## set a username that exists on the database server
@@ -48,7 +53,7 @@ source("code/do_buffers.R")
 
 #### extract OMI satellite data ####
 sql_txt <- extract_raster_in_buffer(
-  out_table = paste(unique_name,"_",source_lyr_label,"_",yy, sep ="")
+  out_table = paste(unique_name,"_omi_",yy, sep ="")
   ,
   source_lyr_name = paste("sat_omi_no2.omi_no2_",yy,"kr1_new_albers", sep = "")
   ,
@@ -77,7 +82,11 @@ sql_txt <- extract_points_in_buffer(
   ,
   out_table = paste(unique_name,"_",lyr_out_suffix, sep = "")
   ,
+  out_colname = "grid_code"
+  ,
   buffer_table = paste(unique_name,"_buffer_",buff_todo, sep = "")
+  ,
+  fun = "avg"
 )
 
 dbSendQuery(ch,
@@ -87,8 +96,11 @@ sql_txt
 
 #### major roads ####
 buff_todo <- 500
+source_lyr_nam = "majrds"
 out_table <- paste(unique_name,"_",source_lyr_nam, buff_todo,"m", sep = "")
 buff_lyr <- paste(unique_name,"_buffer_",buff_todo, sep = "")
+
+
 sql_txt <- extract_lines_in_buffer(
   source_lyr = "roads_psma.majrds"
   ,
@@ -100,7 +112,7 @@ sql_txt <- extract_lines_in_buffer(
   ,
   source_geom_col = "geom_albers"
   ,
-  out_table <- out_table
+  out_table = out_table
 )
 
 dbSendQuery(ch,
@@ -110,17 +122,17 @@ sql_txt
             
 ## do additional calculation specific to the psma majrds layer
 ## slect (subtype_cd =2 OR subtype_cd =3) these are multilane roads
+## we want to treat them as single line lengths (divide by 2)
 
 dbSendQuery(ch,
-            ## cat(
-            paste("drop table if exists ",unique_name,"_",source_lyr_nam, buff_todo,"mAlbers_total_road_length;
+## cat(
+paste("drop table if exists ",unique_name,"_",source_lyr_nam, buff_todo,"mAlbers_total_road_length;
 select gid, sum(RDS_",buff_todo,"M) as RDS_",buff_todo,"M
 into ",unique_name,"_",source_lyr_nam, buff_todo,"mAlbers_total_road_length
 from (
 select t1.gid, 
 ",source_lyr_var,",
 case when ",source_lyr_var," in (2,3) then sum(len)/2 else sum(len) end as RDS_",buff_todo,"M 
-
 from ",unique_name,"_",source_lyr_nam, buff_todo,"mAlbers_length t1
 group by gid, ",source_lyr_var,"
 order by gid
@@ -129,7 +141,7 @@ group by gid
 ", sep = "")
 )
 
-#### 06 NPI ####
+#### NPI ####
 ## TODO why is this not like the impsa code?
 # maybe change extract pts in buff to take avg vs count? also the coastline...
 source_lyr <- "npi.npinox_2008_2009"
@@ -137,11 +149,13 @@ source_lyr_nam <- "npinox"
 coast <- "abs_ste.ste_2011_aus_albers_simple"
 radii_todo <- c(1000, 400)
 output_name <- "npi_dens"
+
 source("code/do_extract_points_in_buffer_with_coast.R")
 
-#### 07 industrial and openspace_buffer ####
+#### industrial and openspace_buffer ####
 source_lyr <- "abs_mb.mb_2011_aus_albers"
-radii_todo <- 10000
+lyr_out_suffix <- "ind_insct_buffer"
+buff_todo <- 10000
 landuse_categories <- data.frame(rbind(
   c("Industrial", "where mb_cat11 = 'Industrial'", "ind"),
   c("Open", "where mb_cat11 in ('Water', 'Parkland', 'Agricultural')", "open")
@@ -149,7 +163,7 @@ landuse_categories <- data.frame(rbind(
 names(landuse_categories) <- c("type", "sql", "label")
 
 source("code/do_extract_polygons_in_buffer.R")
-## TODO remove the insct with coast from this, put into the buffers script
+
 ed <- Sys.time()
 print(ed - strt)
 
@@ -170,6 +184,10 @@ coeffs <- data.frame(rbind(
 ))
 names(coeffs) <- c("name", "coefficient", "variable", "var_name", "table_name")
 coeffs
+
+## from these coefficients in Luke's paper we can calculate the estimation predictions for each point
+## TODO this doesn't need to be done in SQL, can simplify this and just return the predictors
+## TODO #2 this has a bug now that the functions used are not returning all buffers in NPI_DENS
 
 for(ty in 1:nrow(coeffs)){
   #  ty = 1

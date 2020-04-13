@@ -2,23 +2,52 @@
 for(ri in radii_todo){
 ## ri <- radii_todo[1]
 
-dbSendQuery(ch,
-## cat(
-paste("drop table if exists ",unique_name,"_",source_lyr_nam,ri,"m;
-select foo.*, case when bar.count_",source_lyr_nam," is null then 0 else bar.count_npinox end
-into ",unique_name,"_",source_lyr_nam,ri,"m
-from ",unique_name,"_buffer_",ri," foo
-left join
-( 
-select t1.gid, count(t2.gid) as count_",source_lyr_nam,", t1.geom 
-from ",unique_name,"_buffer_",ri," t1,
-",source_lyr," t2
-where st_contains(t1.geom, t2.geom_albers)
-group by t1.gid, t1.geom
-) bar
-on foo.gid = bar.gid", sep = "")
-)
+## DEPRECATED this one adds empty buffers
+# dbSendQuery(ch,
+# ## cat(
+# paste("drop table if exists ",unique_name,"_",source_lyr_nam,ri,"m;
+# select foo.*, case when bar.count_",source_lyr_nam," is null then 0 else bar.count_npinox end
+# into ",unique_name,"_",source_lyr_nam,ri,"m
+# from ",unique_name,"_buffer_",ri," foo
+# left join
+# ( 
+# select t1.gid, count(t2.gid) as count_",source_lyr_nam,", t1.geom 
+# from ",unique_name,"_buffer_",ri," t1,
+# ",source_lyr," t2
+# where st_contains(t1.geom, t2.geom_albers)
+# group by t1.gid, t1.geom
+# ) bar
+# on foo.gid = bar.gid", sep = "")
+# )
 
+buff_todo <- ri
+lyr_out_suffix <- paste(source_lyr_nam, ri, "m", sep = "")
+out_colname <- "count_gid"
+
+sql_txt <- extract_points_in_buffer(
+  source_lyr = source_lyr
+  ,
+  source_lyr_geom_col = "geom_albers"
+  ,
+  src_var = "gid"
+  ,
+  buff_todo = buff_todo
+  ,
+  out_table = paste(unique_name,"_",lyr_out_suffix, sep = "")
+  ,
+  out_colname = out_colname
+  ,
+  buffer_table = paste(unique_name,"_buffer_",buff_todo, sep = "")
+  ,
+  fun = "count"
+)
+  
+dbSendQuery(ch,
+  # cat(
+  sql_txt
+)
+  
+  
 ## we don't want to divide by the total area of buffers if some of the area is in the ocean!
 ## so calculate the area of land
 dbSendQuery(ch,
@@ -46,7 +75,7 @@ from ",unique_name,"_",source_lyr_nam,ri,"m_insct_buffer t1", sep = "")
 dbSendQuery(ch,
 ## cat(
 paste("drop table if exists ",unique_name,"_",source_lyr_nam,ri,"m_dens;
-select t1.gid, count_",source_lyr_nam,"/area as ",output_name,"_",ri,"
+select t1.gid, ",out_colname,"/area as ",output_name,"_",ri,"
 into ",unique_name,"_",source_lyr_nam,ri,"m_dens
 from ",unique_name,"_",source_lyr_nam,ri,"m t1
 left join
