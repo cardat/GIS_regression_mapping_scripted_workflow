@@ -60,7 +60,7 @@ res <- 0.001
 smidge <- 0.0075 # a constant to expand the edge of the estimation grid by (in dec degs)
 
 ## you can override the creation of a grid from the points by selecting dimensions 
-custom_grid <- TRUE
+custom_grid <- FALSE
 # These are just an example, you should replace this with your own
 xmn <- 150.92865
 xmx <- 150.9665
@@ -225,7 +225,7 @@ sql
 # predicted[1:10,1:4]
 # predicted[,1:4]
 # t(predicted[1,])
-# write.csv(predicted, "working_temporary/qc_predicted.csv", row.names = F)
+write.csv(predicted, sprintf("%s/%s.csv", outdir, outfile), row.names = F)
 
 if(estimation_grid){
 pred <- predicted[,c("x", "y", "predicted")]
