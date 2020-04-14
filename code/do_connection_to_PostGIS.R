@@ -1,5 +1,5 @@
 #### do connection to postgis ####
-pwd <- get_pgpass(database = "postgis_car", host = "swish4.tern.org.au", user = username, savePassword = FALSE)
+pwd <- get_pgpass(database = "postgis_car", host = "swish4.tern.org.au", user = username, remote = TRUE, savePassword = TRUE)
 
 drv <- dbDriver("PostgreSQL")
 ch <- dbConnect(drv, dbname = pwd[,3],
