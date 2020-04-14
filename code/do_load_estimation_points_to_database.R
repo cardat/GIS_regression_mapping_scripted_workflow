@@ -3,21 +3,7 @@ if(!is.na(estimation_points_filename)){
   str(estimation_points@data)
 }
 
-## set the names of the columns that contain the x and y (if not using a shp file, this will be required for the grid defined below)
-xcoord <- "x"
-ycoord <- "y"
 
-## if you don't have a estimation_points file, you can create a grid
-## if you want to create a regular grid of points, set this to TRUE otherwise FALSE
-estimation_grid <- TRUE
-## NB this is hard coded to assume GDA94, which is a safe bet for Australian datasets
-est_grid_srid <- 4283
-## set the resolution (in dec degs)
-res <- 0.005
-smidge <- 0.0075 # a constant to expand the edge of the estimation grid by (in dec degs)
-
-## set a name for the output
-run_label <- "demo_case_study_region"
 if(estimation_grid){
   outfile <- sprintf("%s_%s_res%s", run_label, yy, format(res, scientific = FALSE)) 
 } else {
@@ -30,21 +16,22 @@ unique_name <- basename(tempfile())
 
 ## and set the longitudes and latitudes (use bbox or numerics), resolution and a buffer zone around the edge
 ## IF YOU WANT A DIFFERENT GRID YOU CAN SET THE XMIN, XMAX, YMIN, YMAX HERE INSTEAD (in dec dgs, gda94)
-if(exists("estimation_points")){
+if(exists("estimation_points") & !custom_grid){
   xmn <- estimation_points@bbox[1,1]
   xmx <- estimation_points@bbox[1,2]
   ymn <- estimation_points@bbox[2,1]
   ymx <- estimation_points@bbox[2,2]
   
-  ## now create the grid
-  if(estimation_grid){
-    source("code/do_gridded_shapefile.R")
-    names(pts) <- c("Id", "x", "y")
-    plot(pts, cex = 0.01)
-    plot(estimation_points, add = T, col = 'red')
-  }
 } else {
-  print("you'll need to add xmin, xmax, ymin and max because estimation_points is NA")
+  print("either estimation_points is missing, or custom_grid is TRUE")
+}
+
+## now create the grid
+if(estimation_grid){
+  source("code/do_gridded_shapefile.R")
+  names(pts) <- c("Id", xcoord, ycoord)
+  # plot(pts, cex = 0.01)
+  # plot(estimation_points, add = T, col = 'red')
 }
 
 ## and now the final selection of estimation points, use the grid if it exists

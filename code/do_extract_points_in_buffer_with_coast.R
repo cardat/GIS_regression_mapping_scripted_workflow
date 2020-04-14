@@ -41,9 +41,9 @@ sql_txt <- extract_points_in_buffer(
   ,
   fun = "count"
 )
-  
+
 dbSendQuery(ch,
-  # cat(
+# cat(
   sql_txt
 )
   

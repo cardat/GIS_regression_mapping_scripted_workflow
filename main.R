@@ -1,5 +1,5 @@
 ## GIS_regression_mapping_scripted_workflow
-## ivanhanigan
+## codes = ivanhanigan, regression map = luke knibbs
 
 #### load libraries and functions ####
 if(!require("raster")) install.packages("raster"); library(raster)
@@ -16,10 +16,11 @@ source("code/function_create_buffers.R")
 source("code/function_extract_raster_in_buffer.R")
 source("code/function_extract_points_in_buffer.R")
 source("code/function_extract_lines_in_buffer.R")
+source("code/function_intersect_polygons_in_buffer.R")
 
 
 ##### set up ####
-## set a username that exists on the database server
+## set a username that exists on the database server (email to car.data@sydney.edu for access)
 username <- "ivan_hanigan"
 
 ## set the year that is of interest for this run
@@ -44,8 +45,35 @@ strt <- Sys.time()
 ## 3) if you don't want this, set to NA
 estimation_points_filename <- "data_provided/liverpool_sensitive_bld_labs"
 
+## set the names of the columns that contain the x and y (if not using a shp file, this will be required for the grid defined below)
+xcoord <- "x"
+ycoord <- "y"
+
+## if you don't have a estimation_points file, you can create a grid
+## if you want to create a regular grid of points, set this to TRUE otherwise FALSE
+estimation_grid <- TRUE
+## NB this is hard coded to assume GDA94, which is a safe bet for Australian datasets
+est_grid_srid <- 4283
+
+## set the output grid resolution (in dec degs)
+res <- 0.001
+smidge <- 0.0075 # a constant to expand the edge of the estimation grid by (in dec degs)
+
+## you can override the creation of a grid from the points by selecting dimensions 
+custom_grid <- TRUE
+# These are just an example, you should replace this with your own
+xmn <- 150.92865
+xmx <- 150.9665
+ymn <- -33.9414
+ymx <- -33.9238
+
+## set a name for the output
+run_label <- "demo_case_study_region"
+
 ## now load the spatial data of the estimation nodes
 source("code/do_load_estimation_points_to_database.R")
+## note this returns a warning about 'unrecognized PostgreSQL field type geometry'
+## it is safe to ignore this
 
 #### create buffers ####
 radii <- c(400,500,1000,1200,10000)
@@ -99,7 +127,7 @@ buff_todo <- 500
 source_lyr_nam = "majrds"
 out_table <- paste(unique_name,"_",source_lyr_nam, buff_todo,"m", sep = "")
 buff_lyr <- paste(unique_name,"_buffer_",buff_todo, sep = "")
-
+source_lyr_var <- "subtype_cd"
 
 sql_txt <- extract_lines_in_buffer(
   source_lyr = "roads_psma.majrds"
@@ -108,7 +136,7 @@ sql_txt <- extract_lines_in_buffer(
   ,
   buff_lyr = buff_lyr
   ,
-  source_lyr_var ="subtype_cd"
+  source_lyr_var = source_lyr_var
   ,
   source_geom_col = "geom_albers"
   ,
@@ -167,68 +195,30 @@ source("code/do_extract_polygons_in_buffer.R")
 ed <- Sys.time()
 print(ed - strt)
 
-#### 08 Merge master table ####
+#### Merge master table ####
 ## Use the coeefficients as per Knibbs et al 2014
 ## Knibbs, L. D., Hewson, M. G., Bechle, M. J., Marshall, J. D., & Barnett, A. G. (2014). A national satellite-based land-use regression model for air pollution exposure assessment in Australia. Environmental Research, 135, 204–211. https://doi.org/10.1016/j.envres.2014.09.011
 ## Note that some of these are centred and standardised
 coeffs <- data.frame(rbind(
   c("Intercept","4.563", "intercept", "",""),
-  c("Impervious surfaces (1200 m)", "0.701", "((grid_code-10)/10)", "grid_code", "impsa1200m"),
+  c("Impervious surfaces (1200 m)", "0.701", "((case when grid_code is null then 0 else grid_code end-10)/10)", "grid_code", "impsa1200m"),
   c("OMI column NO2","1.203","RASTERVALU", "RASTERVALU", paste0("omi_",yy)),
   c("Major roads (500 m)", "0.828", "((case when RDS_500M is null then 0 else RDS_500M end /1000) - 0.65)", "RDS_500M", "majrds500mAlbers_total_road_length"),
   c("Open space (10,000 m)","-0.170","((OPENSPACE_10000M-10)/10)", "area_open as OPENSPACE_10000M", "ind_insct_buffer_area"),
-  c("Industrial NOX emission site density (400 m)","2.629","NPI_DENS_400","NPI_DENS_400", "npinox400m_dens"),
-  c("Industrial NOX emission site density (1000 m)","4.083","NPI_DENS_1000","NPI_DENS_1000","npinox1000m_dens"),
+  c("Industrial NOX emission site density (400 m)","2.629","case when NPI_DENS_400 is null then 0 else NPI_DENS_400 end", "NPI_DENS_400", "npinox400m_dens"),
+  c("Industrial NOX emission site density (1000 m)","4.083","case when NPI_DENS_1000 is null then 0 else NPI_DENS_1000 end","NPI_DENS_1000","npinox1000m_dens"),
   c("Industrial land use (10,000 m)","0.451","((INDUSTRIAL_10000M - 10)/10)","area_ind as INDUSTRIAL_10000M", "ind_insct_buffer_area"),
   c("Calendar year", "-0.140", paste0("(",yy,"-2008)"), "year", yy)
 ))
 names(coeffs) <- c("name", "coefficient", "variable", "var_name", "table_name")
 coeffs
 
-## from these coefficients in Luke's paper we can calculate the estimation predictions for each point
-## TODO this doesn't need to be done in SQL, can simplify this and just return the predictors
-## TODO #2 this has a bug now that the functions used are not returning all buffers in NPI_DENS
+source("code/do_main_merge.R")
 
-for(ty in 1:nrow(coeffs)){
-  #  ty = 1
-  coeff_i <- coeffs[ty,"coefficient"]
-  var1 <- coeffs[ty,"variable"]
-  var <- ifelse(var1 == "intercept", "", paste(" * ", var1))
-  var2 <- coeffs[ty,"var_name"]
-  tbl <- coeffs[ty,"table_name"]
-  
-  txt0 <- paste("(",coeff_i,var,")", sep  = "")
-if(ty == 1){
-  txt <- txt0
-} else {
-  txt <- paste0(txt, " + \n", txt0)
-}
-
-  if(var2 == "year") next ## this is a constant, not a table
-  main_merge0 <- paste0("t",ty-1, ".", var2)
-  if(ty == 1) next
-if(ty == 2){
-  main_merge <- paste0("select t1.gid, ",xcoord,", ",ycoord,", ", main_merge0)
-} else {
-  main_merge <- paste0(main_merge, ", ", main_merge0)
-}
-
-  main_merge0_tbls <- paste0(unique_name, "_", tbl, " as t",ty-1)
-  if(ty == 2){
-    main_merge_tbls <- paste0(main_merge0_tbls)
-  } else {
-    main_merge_tbls <- paste0(main_merge_tbls, "\nleft join ", main_merge0_tbls, "\non t1.gid = t",ty-1,".gid")
-  }
-  
-}
-cat(txt)
-cat(main_merge)
-main_merge_tbls <- paste0(main_merge_tbls, "\nleft join ",recpt," t",ty+1,"\non t1.gid = t",ty+1,".gid")
-cat(main_merge_tbls)
-
-sql <- paste0("select gid, ",xcoord," as x, ",ycoord," as y,\n",txt,"\nas predicted,\nmain_merge.*\nfrom (",main_merge,"\nfrom\n",main_merge_tbls,") main_merge")
-cat(sql)
-predicted <- dbGetQuery(ch,sql)
+predicted <- dbGetQuery(ch,
+# cat(
+sql
+)
 
 # summary(predicted)
 # predicted[1:10,]
@@ -242,7 +232,7 @@ pred <- predicted[,c("x", "y", "predicted")]
 
 gridded(pred) <- ~x+y
 
-#plot(pred)
+# plot(pred)
 #dir(outdir)
 
 pred <- raster(pred)
@@ -252,7 +242,7 @@ writeRaster(pred, sprintf("%s/%s.tif", outdir, outfile), format = "GTiff", overw
 #### clean up ####
 ## clean up the database for the working tables while developing this run?
 tbls <- pgListTables(ch, "public")
-tbls_todo <- tbls[grep(unique_name, tbls$relname),]
+tbls_todo <- tbls[grep("file", tbls$relname),] #tbls[grep(unique_name, tbls$relname),]
 tbls_todo
 for(tb in tbls_todo$relname){
   dbSendQuery(ch, sprintf("drop table %s", tb))
