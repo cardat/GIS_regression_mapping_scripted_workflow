@@ -20,8 +20,12 @@ source("code/function_intersect_polygons_in_buffer.R")
 
 
 ##### set up ####
-## set a username that exists on the database server (email to car.data@sydney.edu for access)
+## set a username that exists on the database server (email to car.data@sydney.edu.au for access to the CARDAT database)
+## the codes that connect to the DB will ask for a password
 username <- "ivan_hanigan"
+
+## set a name for the output
+run_label <- "demo_case_study_region_apmma"
 
 ## set the year that is of interest for this run
 yy <- 2006
@@ -67,13 +71,10 @@ xmx <- 150.9665
 ymn <- -33.9414
 ymx <- -33.9238
 
-## set a name for the output
-run_label <- "demo_case_study_region"
 
 ## now load the spatial data of the estimation nodes
 source("code/do_load_estimation_points_to_database.R")
-## note this returns a warning about 'unrecognized PostgreSQL field type geometry'
-## it is safe to ignore this
+print("Please note this returns a warning about 'unrecognized PostgreSQL field type geometry' it is safe to ignore this")
 
 #### create buffers ####
 radii <- c(400,500,1000,1200,10000)
@@ -204,10 +205,10 @@ coeffs <- data.frame(rbind(
   c("Impervious surfaces (1200 m)", "0.701", "((case when grid_code is null then 0 else grid_code end-10)/10)", "grid_code", "impsa1200m"),
   c("OMI column NO2","1.203","RASTERVALU", "RASTERVALU", paste0("omi_",yy)),
   c("Major roads (500 m)", "0.828", "((case when RDS_500M is null then 0 else RDS_500M end /1000) - 0.65)", "RDS_500M", "majrds500mAlbers_total_road_length"),
-  c("Open space (10,000 m)","-0.170","((OPENSPACE_10000M-10)/10)", "area_open as OPENSPACE_10000M", "ind_insct_buffer_area"),
+  c("Open space (10,000 m)","-0.170","((case when OPENSPACE_10000M is null then 0 else OPENSPACE_10000M end -10)/10)", "area_open as OPENSPACE_10000M", "ind_insct_buffer_area"),
   c("Industrial NOX emission site density (400 m)","2.629","case when NPI_DENS_400 is null then 0 else NPI_DENS_400 end", "NPI_DENS_400", "npinox400m_dens"),
   c("Industrial NOX emission site density (1000 m)","4.083","case when NPI_DENS_1000 is null then 0 else NPI_DENS_1000 end","NPI_DENS_1000","npinox1000m_dens"),
-  c("Industrial land use (10,000 m)","0.451","((INDUSTRIAL_10000M - 10)/10)","area_ind as INDUSTRIAL_10000M", "ind_insct_buffer_area"),
+  c("Industrial land use (10,000 m)","0.451","((case when INDUSTRIAL_10000M is null then 0 else INDUSTRIAL_10000M end - 10)/10)","area_ind as INDUSTRIAL_10000M", "ind_insct_buffer_area"),
   c("Calendar year", "-0.140", paste0("(",yy,"-2008)"), "year", yy)
 ))
 names(coeffs) <- c("name", "coefficient", "variable", "var_name", "table_name")
