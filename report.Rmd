@@ -1,30 +1,13 @@
 ---
 title: A scripted workflow for updating GIS regression mapping models using land use and other predictors of air pollution
-author:  
-- name: Luke Knibbs 
-  affilnum: 1,2
-  email: l.knibbs@uq.edu.au
-  orcid: 0000-0002-0399-2370
-- name: Christy Geromboux
-  affilnum: 2,3  
-- name: Ivan C. Hanigan
-  affilnum: 2,3,4
-  orcid: 0000-0002-6360-6793
-affiliation:
-- affilnum: 1
-  affil: The University of Queensland, School of Public Health  
-- affilnum: 2
-  affil: Centre for Air pollution, energy and health Research (CAR)
-- affilnum: 3
-  affil: The University of Sydney, University Centre for Rural Health, School of Public Health
-- affilnum: 4
-  affil: The University of Canberra, Centre for Research and Action in Public Health
+author: "Luke D. Knibbs^1,3^, Ivan C. Hanigan^2,3,4^, Christy Geromboux^2,3^" 
+date: "^1^ The University of Queensland, School of Public Health, ^2^ University Centre for Rural Health, North Coast, School of Public Health, The University of Sydney, Sydney, Australia. ^3^ Centre for Air pollution, energy and health Research (CAR).  ^4^ Health Research Institute, University of Canberra, Canberra, Australia."
 output:
   pdf_document:
     fig_caption: yes
     keep_tex: no
     number_sections: yes
-    template: tex_components/manuscript.latex
+    toc: yes
   html_document: null
   word_document: null
 fontsize: 11pt
@@ -35,18 +18,17 @@ csl: tex_components/meemodified.csl
 documentclass: article
 classoption: a4paper
 spacing: singlespacing
-bibliography: paper.bib
+bibliography: report.bib
 ---
 
-# Summary
+# Abstract
+In this study we aimed to develop a scripted workflow to estimate air pollution for points of interest. This is needed to assign exposure estimates for health studies.
 
 ## Introduction
-
-In this study we aimed to develop a scripted workflow to update geographical information system (GIS) regression mapping models that use land use and other predictors. 
-GIS regression mapping was first introduced by @Briggs1997 and is a technique commonly used to create predictive spatial models (and spatiotemporal models) of pollutant levels. It is also known as land use regression (LUR), however, the label LUR does not reflect the fact that non-land use predictors are often used such as chemical transport models or remote sensing data (e.g. satellite aerosol optical depth). These models add more information than just land use data to the model as predictor variables. 
+The scripted workflow allows updated geographical information system (GIS) regression mapping models that use land use and other predictors to be generated. 
+The air pollution modelling framework is based on linear regression modelling and relies on the coefficients from a regression equation to estimate air pollution at new locations.
+The method is also known as land use regression (LUR) and 'GIS regression mapping', and was first introduced by @Briggs1997. It has become a technique commonly used to create predictive spatial models (and spatiotemporal models) of air pollution levels.
 Such GIS regression mapping models are used extensively in epidemiological studies of health impacts of air pollution exposure [@Knibbs2014a; @DeHoogh2016; @Pereira2017; @Knibbs2018; @Dirgawati2019; @Cowie2019a].
-
-## Purpose of the software
 
 The updating of a GIS regression model can be conceptualised in five ways. These distinguish between updates that: 
 
@@ -63,52 +45,52 @@ Primarily we focus on the type of updates that apply a previously developed
 model regression equation to 1) a new set of locations within the same study area and 2) a new time point. New locations can be defined by the user or can be based on a dataset containing regularly located points (i.e. a grid) or locations of the participants in a epidemiological study (i.e. exposure estimates). 
 We aim to automate most of the process to reduce required efforts from the user. 
 
-Our scripted workflow tools are aimed at GIS specialists and uses the PostGIS and R software environments which are technically sophisticated computing tools. These can be complicated to install and configure so we also provide an online cloud-based virtual desktop environment with these tools pre-configured so that users can develop the updates without having to install the tools on their local computers (https://cardat.github.io/).  All the software is published as free and open source software on Github (https://github.com/ivanhanigan/GIS_regression_mapping_scripted_workflow). Some of the data inputs require additional data provision agreements to be made between data owners and data users.
+# Methods
 
-We developed a case study based on the methodology used by @Knibbs2014a. We also provide links to the protocols developed by the European Study of Cohorts for Air Pollution Effects (ESCAPE) [@Beelen:2013;@Eeftens:2012] as set out in the ESCAPE Exposure assessment manual [@escape]. Within air pollution research the ESCAPE methodology is used as the standard for developing GIS regression mapping models. 
+## Implementation of procedures from Knibbs et al. 2014
+We developed a case study based on the methodology used by @Knibbs2014a. In that paper the authors developed a regression model that estimated the concentrations of the air pollutant nitrogen dioxide (NO2). We applied the methods of that study exactly so that the air pollution could be estimated for any new set of points of interest. An example is the locations of study locations for a health impact assessment.
 
-## Current case study application
+The codes can be repurposed to facilitate new air pollution models easily by making minor modifications.
 
-The scripted workflow has been developed through the Australian National Health and Medical Research Council (NHMRC) centre of research excellence Centre for Air pollution, energy and health Research (CAR).
-CAR is a collaboration between more than 30 researchers from around Australia and internationally in diverse but related disciplines who are at the forefront of their scientific fields. The Centre is based in eight of Australia's most prestigious research institutions. 
-The Centre provides an example of a current application for this scripted air pollution prediction models.
-
-## Software implementation definitions
-
+## Software
 We used the PostgreSQL / PostGIS Geographical Information Systems (GIS) database server:
 
 - PostgreSQL [www.postgresql.org](www.postgresql.org)
 - PostGIS [http://postgis.refractions.net](http://postgis.refractions.net)
+
+We implemented this on a PostGIS database (version 2.3 running PostgreSQL 9.6.15 on x86_64-pc-linux-gnu (Ubuntu 9.6.15-1.pgdg16.04+1), compiled by gcc (Ubuntu 5.4.0-6ubuntu1~16.04.11) 5.4.0 20160609, 64-bit) and did the analysis with R functions and SQL scripts.
+
+## Workflow
 
 Workflow orchestration and statistical analysis was implemented in R:
 
 - R language for statistical computing [www.r-project.org](www.r-project.org)
 - and various R packages installed from the CRAN public repository
 
-The "main.R" script in the project directory is set up so that the user can declare specific inputs required for the specific update, and then run the component steps in sequence. These are:
+We have set up a PostGIS database incorporating the required data, and along with the R scripts and readme in the open source software repository https://github.com/cardat/GIS_regression_mapping_scripted_workflow. In the 'code' folder can be found the codes to run the prediction analysis. 
 
-1. "01_test_connection_to_PostGIS.R"
-2. "02_buffers.R"
-3. "03_extract_OMI.R"
-4. "04_overlay_IMPSA_with_1200M.R"
-5. "05_majrds_intersect_with_500m_buffer.R"
-6. "06_NPINOX_extract.R"
-7. "07_industrial_or_open_in_buffer.R"     
+The "main.R" script in the project directory is set up so that the user can declare specific inputs required for the specific update, and then run the component steps in sequence. 
 
-We also include some helper functions written to enable user authentication on the database and database management:
+We also include some helper functions written to enable user authentication on the database and database management.
 
-1. "function_get_pgpass.R"
-2. "function_pgListTables.R" 
 
-## Data inputs
+## Data sources
 
-TODO. 
+The data sources used for the code in this study are outlined in Table 1.
 
-In the first case we should describe the data used for the Knibbs 2014 NO2 demo. Some of these are restricted access and we will need to discuss data provision agreements.
+```{r, tabDS, echo = F, results = "asis"}
+library(xtable)
+foo <- read.csv('figures_and_tables/data_sources.csv', as.is = T, check.names = F)
+##x <- kable(foo, digits = 1, caption = 'Data sources')
+tabcode <- xtable(foo, caption = 'Data sources')
+align(tabcode) <-  c( 'l', 'p{2in}','p{4in}')
+print(tabcode,  include.rownames = F, table.placement = '!ht',
+      sanitize.text.function = function(x) x, comment = F, caption.placement = "top")
+```
 
-Second, we should describe how an extension case study would gather new data and insert into the database.
 
-## Results
+
+# Results
 
 The resulting prediction datasets can be exported to a variety of GIS formats including ESRI Shapefiles and GeoTIFF raster files Figure \ref{fig:gisno2100m}. 
 
@@ -121,30 +103,27 @@ The resulting prediction datasets can be exported to a variety of GIS formats in
 \end{figure}
 
 
-In addition the codes are included to generate an interactive web mapping version as shown in Figure \ref{fig:gisno2leafletmapno2} and Figure \ref{fig:gisno2leafletmappop}.
 
-\begin{figure}[!h]
-\centering
-\includegraphics[width=.8\textwidth]{figures_and_tables/gis_no2_leaflet_map_no2.png}
-\caption{Western Sydney Liverpool case study NO2 in 2016 (ppb) averages for ABS Meshblocks from the 2016 Census}
-\label{fig:gisno2leafletmapno2}
-\end{figure}
+## Current case study application
 
-\begin{figure}[!h]
-\centering
-\includegraphics[width=.8\textwidth]{figures_and_tables/gis_no2_leaflet_map_pop.png}
-\caption{Western Sydney Liverpool case study 2016 populations for ABS Meshblocks}
-\label{fig:gisno2leafletmappop}
-\end{figure}
+The scripted workflow has been developed through the Australian National Health and Medical Research Council (NHMRC) centre of research excellence Centre for Air pollution, energy and health Research (CAR).
+CAR is a collaboration between more than 30 researchers from around Australia and internationally in diverse but related disciplines who are at the forefront of their scientific fields. The Centre is based in eight of Australia's most prestigious research institutions. 
+The Centre provides an example of a current application for this scripted air pollution prediction models.
 
-\clearpage
 
-## Discussion and Conclusions
+# Discussion
+
+Our scripted workflow tools are aimed at GIS specialists and uses the PostGIS and R software environments which are technically sophisticated computing tools. These can be complicated to install and configure so we also provide an online cloud-based virtual desktop environment with these tools pre-configured so that users can develop the updates without having to install the tools on their local computers (https://cardat.github.io/).  All the software is published as free and open source software on Github (https://github.com/ivanhanigan/GIS_regression_mapping_scripted_workflow). Some of the data inputs require additional data provision agreements to be made between data owners and data users.
+
+TODO we should describe how an extension case study would gather new data and insert into the database.
+
+# Conclusion
 
 TODO
 
 # Acknowledgments
-The work by IH was funded by the Clean Air and Urban Landscapes (CAUL) hub of the Australian Government’s National and Environmental Science Programme (NESP).
+The work by LK, IH and CG was funded by the Clean Air and Urban Landscapes (CAUL) hub of the Australian Government’s National and Environmental Science Programme (NESP).
+TODO Acknowledge support from Prof Jane Heyworth and Prof Geoff Morgan.
 Financial support was also provided by the Centre for Air pollution, energy and health Research (CAR, http://www.car-cre.org.au) an Australian National Health and Medical Research Council (NHMRC) Centre of Research Excellence; and the Air Pollution, Traffic Exposures and Mortality and Morbidity in Older Australians (APTEMA) Study.
 
 This research is undertaken with the assistance of resources from the Collaborative Environment for Scholarly Analysis and Synthesis (CoESRA; https :// coesr a.tern.org.au).
