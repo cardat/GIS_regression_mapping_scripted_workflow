@@ -24,7 +24,7 @@ bibliography: report.bib
 # Abstract
 In this study we aimed to develop a scripted workflow to estimate air pollution for points of interest. This is needed to assign exposure estimates for health studies.
 
-## Introduction
+# Introduction
 The scripted workflow allows updated geographical information system (GIS) regression mapping models that use land use and other predictors to be generated. 
 The air pollution modelling framework is based on linear regression modelling and relies on the coefficients from a regression equation to estimate air pollution at new locations.
 The method is also known as land use regression (LUR) and 'GIS regression mapping', and was first introduced by @Briggs1997. It has become a technique commonly used to create predictive spatial models (and spatiotemporal models) of air pollution levels.
