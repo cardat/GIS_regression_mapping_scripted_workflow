@@ -1,6 +1,6 @@
 ---
 title: A scripted workflow for updating GIS regression mapping models using land use and other predictors of air pollution
-author: "Luke D. Knibbs^1,3^, Ivan C. Hanigan^2,3,4^, Christy Geromboux^2,3^" 
+author: "Luke D. Knibbs^1,3^, Ivan C. Hanigan^2,3,4^, Christy Geromboux^2,3^, Edward Jegasothy^2^" 
 date: "^1^ The University of Queensland, School of Public Health, ^2^ University Centre for Rural Health, North Coast, School of Public Health, The University of Sydney, Sydney, Australia. ^3^ Centre for Air pollution, energy and health Research (CAR).  ^4^ Health Research Institute, University of Canberra, Canberra, Australia."
 output:
   pdf_document:
@@ -22,7 +22,7 @@ bibliography: report.bib
 ---
 
 # Abstract
-In this study we aimed to develop a scripted workflow to estimate air pollution for points of interest. This is needed to assign exposure estimates for health studies.
+In this study we aimed to develop a scripted workflow to estimate air pollution for points of interest. This is needed to assign exposure estimates for health impact assessments and epidemiological studies. The general workflow for updating model estimates is implemented in open source software using PostGIS geographical tools and facilitated by using a scripted workflow with customisable R functions and statistical tools. The codes can be modified to calculate updates for new points of interest, or for new time points, or to build new regression models for new candidate predictor variables, or even for new environmental pollution as the response variable.
 
 # Introduction
 The scripted workflow allows updated geographical information system (GIS) regression mapping models that use land use and other predictors to be generated. 
@@ -50,7 +50,7 @@ We aim to automate most of the process to reduce required efforts from the user.
 ## Implementation of procedures from Knibbs et al. 2014
 We developed a case study based on the methodology used by @Knibbs2014a. In that paper the authors developed a regression model that estimated the concentrations of the air pollutant nitrogen dioxide (NO2). We applied the methods of that study exactly so that the air pollution could be estimated for any new set of points of interest. An example is the locations of study locations for a health impact assessment.
 
-The codes can be repurposed to facilitate new air pollution models easily by making minor modifications.
+The codes can be re-purposed to facilitate new air pollution models easily by making minor modifications.
 
 ## Software
 We used the PostgreSQL / PostGIS Geographical Information Systems (GIS) database server:
@@ -67,7 +67,7 @@ Workflow orchestration and statistical analysis was implemented in R:
 - R language for statistical computing [www.r-project.org](www.r-project.org)
 - and various R packages installed from the CRAN public repository
 
-We have set up a PostGIS database incorporating the required data, and along with the R scripts and readme in the open source software repository https://github.com/cardat/GIS_regression_mapping_scripted_workflow. In the 'code' folder can be found the codes to run the prediction analysis. 
+We have set up a PostGIS database incorporating the required data, and along with the R scripts and read-me in the open source software repository https://github.com/cardat/GIS_regression_mapping_scripted_workflow. In the 'code' folder can be found the codes to run the prediction analysis. 
 
 The "main.R" script in the project directory is set up so that the user can declare specific inputs required for the specific update, and then run the component steps in sequence. 
 
@@ -97,8 +97,8 @@ The resulting prediction datasets can be exported to a variety of GIS formats in
 
 \begin{figure}[!h]
 \centering
-\includegraphics[width=.9\textwidth]{figures_and_tables/gis_no2_100m.png}
-\caption{Western Sydney Liverpool case study 2016 NO2 predicted at a grid of evenly spaced points 100m by 100m and stored as a GeoTIFF file}
+\includegraphics[width=.9\textwidth]{figures_and_tables/Liverpool_SatLUR_NO2_2016annav_V3.png}
+\caption{Western Sydney Liverpool case study 2016 NO2 predicted at a grid of evenly spaced points 10m $\times$ 10m and stored as a GeoTIFF file}
 \label{fig:gisno2100m}
 \end{figure}
 
@@ -126,7 +126,7 @@ The work by LK, IH and CG was funded by the Clean Air and Urban Landscapes (CAUL
 TODO Acknowledge support from Prof Jane Heyworth and Prof Geoff Morgan.
 Financial support was also provided by the Centre for Air pollution, energy and health Research (CAR, http://www.car-cre.org.au) an Australian National Health and Medical Research Council (NHMRC) Centre of Research Excellence; and the Air Pollution, Traffic Exposures and Mortality and Morbidity in Older Australians (APTEMA) Study.
 
-This research is undertaken with the assistance of resources from the Collaborative Environment for Scholarly Analysis and Synthesis (CoESRA; https :// coesr a.tern.org.au).
+This research is undertaken with the assistance of resources from the Collaborative Environment for Scholarly Analysis and Synthesis (CoESRA; https://coesra.tern.org.au).
 
 \clearpage
 
