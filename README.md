@@ -1,7 +1,7 @@
 # GIS_regression_mapping_scripted_workflow
 A scripted workflow for updating GIS regression mapping models using land use and other predictors of air pollution
 
-Luke Knibbs 1,2, Christy Geromboux 2,3, Ivan C. Hanigan 2,3,4
+Luke Knibbs 1,2, Ivan C. Hanigan 2,3,4, Christy Geromboux 2,3, Edward Jegasothy 2,3
 
 1. The University of Queensland, School of Public Health  
 2. Centre for Air pollution, energy and health Research (CAR)
@@ -11,3 +11,5 @@ Luke Knibbs 1,2, Christy Geromboux 2,3, Ivan C. Hanigan 2,3,4
 ## Summary
 
 In this study we aimed to develop a scripted workflow to update air pollution estimates for points of interest using geographical information system (GIS) regression mapping models that use land use and other predictors. 
+
+TODO: add instructions about running an example case study
